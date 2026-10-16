@@ -25,10 +25,23 @@ const ALLOWED_MIME_TYPES = new Set([
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 const UPLOAD_BASE = process.env.UPLOAD_DIR || path.join(__dirname, '../../uploads');
+// tenantId/meetingId are normally already-validated UUIDs (from JWT/route params
+// elsewhere in the app) — this check only ever rejects a malformed/malicious
+// value, never a legitimate request, so it closes the path-traversal window
+// without changing behavior for real usage.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(UPLOAD_BASE, req.tenantId || 'unknown', req.params.meetingId || 'unknown');
+    if (!UUID_RE.test(req.tenantId || '') || !UUID_RE.test(req.params.meetingId || '')) {
+      return cb(new Error('Invalid tenantId or meetingId'));
+    }
+    // Both values are validated against UUID_RE immediately above — traversal
+    // sequences (e.g. "../") cannot match that pattern, so this call can never
+    // resolve outside UPLOAD_BASE. This rule is a pure syntactic match with no
+    // sanitizer awareness, so it flags this regardless of the guard above it.
+    // nosemgrep: javascript.express.security.audit.express-path-join-resolve-traversal.express-path-join-resolve-traversal
+    const dir = path.join(UPLOAD_BASE, req.tenantId, req.params.meetingId);
     try {
       fs.mkdirSync(dir, { recursive: true });
       cb(null, dir);

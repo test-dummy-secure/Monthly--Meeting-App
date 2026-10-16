@@ -19,6 +19,22 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+// Rejects any non-http(s) scheme (javascript:, data:, etc.) — HTML-escaping
+// alone does not neutralize a javascript: URI inside href="{{var}}", since
+// none of its characters require escaping. Mirrors the same allow-list
+// already used by buildMeetingLinkButton below. Returns '' for anything
+// unparseable or non-http(s), same fail-closed behavior.
+function sanitizeUrlValue(value) {
+  if (value == null || value === '') return '';
+  try {
+    const u = new URL(String(value));
+    if (!['https:', 'http:'].includes(u.protocol)) return '';
+    return u.href;
+  } catch {
+    return '';
+  }
+}
+
 function loadTemplate(name) {
   if (templateCache.has(name)) return templateCache.get(name);
   const filePath = path.join(TEMPLATE_DIR, `${name}.html`);
@@ -41,9 +57,12 @@ function renderTemplate(templateName, vars = {}, rawVars = {}) {
     html = html.replace(new RegExp(`\\{\\{\\{${key}\\}\\}\\}`, 'g'), value ?? '');
   }
 
-  // Pass 2 — HTML-escaped substitutions
+  // Pass 2 — HTML-escaped substitutions. Variables named *Url get scheme-
+  // validated first (see sanitizeUrlValue) so a malicious value can never
+  // land inside an href="{{...}}" attribute in any template.
   for (const [key, value] of Object.entries(vars)) {
-    html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), escapeHtml(value));
+    const safeValue = /url$/i.test(key) ? sanitizeUrlValue(value) : value;
+    html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), escapeHtml(safeValue));
   }
 
   return html;

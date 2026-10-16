@@ -35,7 +35,8 @@ class GraphApiUnavailableError extends Error {
 
 // ── AES-256-GCM encryption ────────────────────────────────────────────────────
 
-const ALGO = 'aes-256-gcm';
+const ALGO       = 'aes-256-gcm';
+const TAG_LENGTH = 16; // bytes — GCM default, matches what getAuthTag() already produces
 
 function _keyBuf() {
   const hex = process.env.TOKEN_ENCRYPTION_KEY || '';
@@ -59,7 +60,7 @@ function decrypt(ciphertext) {
   const iv      = Buffer.from(ivHex,  'hex');
   const tag     = Buffer.from(tagHex, 'hex');
   const enc     = Buffer.from(encHex, 'hex');
-  const decipher = crypto.createDecipheriv(ALGO, _keyBuf(), iv);
+  const decipher = crypto.createDecipheriv(ALGO, _keyBuf(), iv, { authTagLength: TAG_LENGTH });
   decipher.setAuthTag(tag);
   return decipher.update(enc).toString('utf8') + decipher.final('utf8');
 }
