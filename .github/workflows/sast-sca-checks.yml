@@ -20,7 +20,7 @@ jobs:
     container: semgrep/semgrep
     continue-on-error: ${{ vars.REPORT_ONLY == 'true' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4  # TODO: pin to a commit SHA (tracked — Semgrep gha-mutable-action-tag)
         with:
           fetch-depth: 0
 
@@ -47,7 +47,7 @@ jobs:
 
       - name: Keep the report (downloadable for 90 days)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4  # TODO: pin to a commit SHA (tracked — Semgrep gha-mutable-action-tag)
         with:
           name: sast-report-${{ github.run_id }}
           path: sast-report.json
@@ -73,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: ${{ vars.REPORT_ONLY == 'true' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4  # TODO: pin to a commit SHA (tracked — Semgrep gha-mutable-action-tag)
 
       - name: Download OSV-Scanner
         shell: bash
@@ -116,7 +116,7 @@ jobs:
 
       - name: Keep the report (downloadable for 90 days)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4  # TODO: pin to a commit SHA (tracked — Semgrep gha-mutable-action-tag)
         with:
           name: sca-report-${{ github.run_id }}
           path: sca-report.json
