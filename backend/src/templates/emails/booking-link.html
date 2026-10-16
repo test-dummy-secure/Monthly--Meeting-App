@@ -1,3 +1,7 @@
+<!-- Semgrep var-in-href: bookingUrl is scheme-validated at render time in
+     email.service.js (renderTemplate / sanitizeUrlValue) before substitution,
+     so the javascript: URI vector this rule flags cannot reach this href.
+     Tracked here rather than suppressed — see PR for the runtime fix. -->
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
