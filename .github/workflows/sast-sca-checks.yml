@@ -1,0 +1,135 @@
+name: Security Checks (SAST + SCA)
+
+on:
+  pull_request:                 # every proposed code change
+  schedule:
+    - cron: "0 2 * * *"         # daily full scan at 02:00 UTC
+  workflow_dispatch:            # "Run workflow" button for manual testing
+  workflow_call:                # REQUIRED: Allows build.yml to call this reusable workflow
+
+permissions: 
+  contents: read
+
+jobs:
+  # ------------------------------------------------------------------
+  # SAST - checks OUR OWN code for security mistakes
+  # ------------------------------------------------------------------
+  sast:
+    name: SAST (code check)
+    runs-on: ubuntu-latest
+    container: semgrep/semgrep
+    continue-on-error: ${{ vars.REPORT_ONLY == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan changed code (PR) or everything (daily)
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # PR: diff-aware - only NEW issues introduced by this change
+            semgrep scan \
+              --config p/owasp-top-ten \
+              --baseline-commit ${{ github.event.pull_request.base.sha }} \
+              --severity ERROR \
+              --json --output sast-report.json \
+              || true
+          else
+            # Daily / Manual / Reusable Call: full scan
+            semgrep scan \
+              --config p/owasp-top-ten --config p/security-audit \
+              --json --output sast-report.json \
+              || true
+          fi
+          # Ensure report exists even if 0 issues found
+          [ -s sast-report.json ] || echo '{"results": []}' > sast-report.json
+
+      - name: Keep the report (downloadable for 90 days)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-report-${{ github.run_id }}
+          path: sast-report.json
+
+      - name: Upload scan to NXG Secure
+        if: always()
+        shell: bash
+        run: |
+          curl -sf -X POST "https://nxg.app.nxgsecure.com/api/v2/reimport-scan/" \
+            -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
+            -F auto_create_context=true \
+            -F product_type_name="${{ github.repository_owner }}" \
+            -F product_name="${{ github.event.repository.name }}" \
+            -F engagement_name="SAST" \
+            -F scan_type="Semgrep JSON Report" \
+            -F file=@sast-report.json
+
+  # ------------------------------------------------------------------
+  # SCA - checks BORROWED packages against known-vulnerability lists
+  # ------------------------------------------------------------------
+  sca:
+    name: SCA (dependency check)
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ vars.REPORT_ONLY == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download OSV-Scanner
+        shell: bash
+        run: |
+          curl -sSL https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64 \
+            -o osv-scanner && chmod +x osv-scanner
+
+      - name: Generate missing lockfile on the fly
+        shell: bash
+        run: |
+          # Dynamically detect project type and build lockfile if ignored/missing in repo
+          if [ -f "package.json" ]; then
+            echo "Detected Node.js project. Generating lockfile..."
+            npm install --package-lock-only --ignore-scripts || npm install --no-audit --no-fund || true
+          elif [ -f "requirements.txt" ]; then
+            echo "Detected Python project..."
+            pip install --dry-run -r requirements.txt || true
+          elif [ -f "go.mod" ]; then
+            echo "Detected Go project..."
+            go mod download || true
+          elif [ -f "pom.xml" ] || [ -f "build.gradle" ]; then
+            echo "Detected Java project..."
+            mvn dependency:resolve || gradle dependencies || true
+          fi
+
+      - name: Scan dependencies
+        shell: bash
+        run: |
+          # -r scans every lockfile found or generated in workspace
+          ./osv-scanner scan -r . \
+            --format json --output sca-report.json || true
+          # Ensure valid report file exists even if 0 vulnerabilities found
+          [ -s sca-report.json ] || echo '{"results": []}' > sca-report.json
+
+      - name: Count and log dependency problems
+        shell: bash
+        run: |
+          TOTAL_COUNT=$(jq '[.results[]?.packages[]?.vulnerabilities[]?] | length' sca-report.json 2>/dev/null || echo 0)
+          echo "Total dependency vulnerabilities found: $TOTAL_COUNT"
+
+      - name: Keep the report (downloadable for 90 days)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sca-report-${{ github.run_id }}
+          path: sca-report.json
+
+      - name: Upload scan to NXG Secure
+        if: always()
+        shell: bash
+        run: |
+          curl -sf -X POST "https://nxg.app.nxgsecure.com/api/v2/reimport-scan/" \
+            -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
+            -F auto_create_context=true \
+            -F product_type_name="${{ github.repository_owner }}" \
+            -F product_name="${{ github.event.repository.name }}" \
+            -F engagement_name="SCA" \
+            -F scan_type="OSV Scan" \
+            -F file=@sca-report.json
