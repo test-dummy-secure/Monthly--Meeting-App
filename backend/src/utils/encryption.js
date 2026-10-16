@@ -45,7 +45,7 @@ const decrypt = (stored) => {
   const iv       = Buffer.from(ivHex,  'hex');
   const authTag  = Buffer.from(tagHex, 'hex');
   const encBuf   = Buffer.from(encHex, 'hex');
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
   decipher.setAuthTag(authTag);
   return Buffer.concat([decipher.update(encBuf), decipher.final()]).toString('utf8');
 };
