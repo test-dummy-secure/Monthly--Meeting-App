@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>{{emailSubject}}</title>
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <style>
+    body { margin: 0; padding: 0; background-color: #f1f5f9; }
+    table { border-spacing: 0; }
+    td { padding: 0; }
+    @media only screen and (max-width: 620px) {
+      .email-card { width: 100% !important; }
+      .email-body { padding: 24px 16px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color:#f1f5f9;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+
+        <table class="email-card" width="600" cellpadding="0" cellspacing="0" border="0" role="presentation"
+               style="max-width:600px;width:100%;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+          <!-- HEADER -->
+          <tr>
+            <td style="background-color:#1A1814;padding:28px 36px;border-radius:10px 10px 0 0;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+                <tr>
+                  <td>
+                    <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;"><tr><td style="font-size:28px;font-weight:700;color:#B8872A;padding-right:10px;vertical-align:middle;line-height:1;">&#8734;</td><td style="vertical-align:middle;padding:0 10px;"><div style="width:1px;height:22px;background-color:#4A4540;"></div></td><td style="vertical-align:middle;"><span style="font-size:21px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">Nxg</span><span style="font-size:21px;font-weight:300;color:#9B9589;letter-spacing:-0.5px;">Secure</span></td></tr></table>
+              <p style="margin:8px 0 0;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;">Security Management</p>
+                  </td>
+                  <td align="right" valign="middle">
+                    <span style="display:inline-block;background-color:{{badgeColor}};color:{{badgeTextColor}};font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;letter-spacing:0.8px;text-transform:uppercase;">
+                      {{badgeLabel}}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ACCENT BAR -->
+          <tr>
+            <td style="background-color:{{accentColor}};height:4px;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td class="email-body" style="background-color:#ffffff;padding:36px;">
+
+              <p style="margin:0 0 6px;color:#64748b;font-size:14px;">Hi <strong style="color:#1e293b;">{{recipientName}}</strong>,</p>
+              <p style="margin:0 0 28px;color:#334155;font-size:15px;line-height:1.7;">{{bodyMessage}}</p>
+
+              <!-- Meeting info -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"
+                     style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:28px;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="margin:0 0 16px;color:#0f172a;font-size:17px;font-weight:700;border-bottom:1px solid #e2e8f0;padding-bottom:14px;">{{meetingTitle}}</p>
+                    <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom:10px;">
+                      <tr>
+                        <td valign="top" style="width:24px;font-size:15px;line-height:1.4;">&#127970;</td>
+                        <td valign="top" style="padding-left:6px;">
+                          <span style="color:#64748b;font-size:12px;font-weight:600;text-transform:uppercase;">Meeting Notes</span><br>
+                          <span style="color:#1e293b;font-size:14px;font-weight:600;">{{notesStatus}}</span>
+                        </td>
+                      </tr>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" role="presentation">
+                      <tr>
+                        <td valign="top" style="width:24px;font-size:15px;line-height:1.4;">&#128203;</td>
+                        <td valign="top" style="padding-left:6px;">
+                          <span style="color:#64748b;font-size:12px;font-weight:600;text-transform:uppercase;">AI Recommendations</span><br>
+                          <span style="color:#1e293b;font-size:14px;font-weight:600;">Pending your review</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA button -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom:28px;">
+                <tr>
+                  <td align="center">
+                    <a href="{{reviewUrl}}" target="_blank"
+                       style="display:inline-block;background-color:{{ctaColor}};color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:8px;letter-spacing:0.3px;">
+                      {{ctaLabel}}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              {{{additionalNote}}}
+
+              <p style="margin:0;color:#94a3b8;font-size:13px;line-height:1.6;">
+                Log in to NxgSecure to review the full meeting details, approve AI task recommendations, and close the meeting.
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background-color:#f8fafc;padding:20px 36px;border-top:1px solid #e2e8f0;border-radius:0 0 10px 10px;text-align:center;">
+              <p style="margin:0 0 4px;color:#94a3b8;font-size:12px;line-height:1.6;">
+                This is an automated message from <strong style="color:#64748b;">NxgSecure</strong>.
+              </p>
+              <p style="margin:0;color:#cbd5e1;font-size:11px;">&#169; 2026 NxgSecure &mdash; NxgSecure. All rights reserved.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

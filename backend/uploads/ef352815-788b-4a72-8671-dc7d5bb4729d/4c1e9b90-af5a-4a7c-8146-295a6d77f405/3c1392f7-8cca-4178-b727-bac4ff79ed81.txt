@@ -1,0 +1,558 @@
+हैलो सचिन जी। कैसे हो आप?
+Sachin Kumar
+01:40
+मैं बड़े हूं, आप बोलो। बड़े, बड़े। ये दादा भी जॉइन कर रहे हैं क्या? आ गए दादा साहब। नाम लिया, दादा साहब आ गए। हैलो दादा साहब। यस सर। आपको याद किया और आप आ गए। कैसे हैं आप? बढ़िया, बढ़िया सर।
+Sachin Kumar
+02:04
+ठीक है, तो स्टार्ट करते हैं सचिन जी इस कॉल को। सो, हमारा एजेंडा ये रहता है इस कॉल का कि हम ना अपने हर कस्टमर के साथ मंथली मीटिंग करते हैं, टू नो, टू चेक देयर सिक्योरिटी एक्सेप्शंस क्या हैं, उनका सिक्योरिटी पॉश्चर क्या है in comparison to last month क्या था और इस month क्या है। और कुछ एक्सेप्शंस हैं, जैसे कुछ कोई पॉलिसी हमने रिमूव की है, या कोई डिवाइसेज़ पहले प्रोटेक्टेड था, उसको अनप्रोटेक्ट किया है, या कहीं पे जी स्केलर हमने शो आउट किया है, या ईटीआर कहीं से हटाया है। तो हम लास्ट month के डेटा से भी इसको टैली करते हैं, then हमारे पास ओवर ऑल फिगर आ जाती है। आपने लास्ट टाइम चेक किया था हमारा एनईजी का 360 पोर्टल, वहां पे भी पूरा डेटा रहता है। ठीक है, ये है। मैं बस स्क्रीन शेयर करता हूं। और during the discussion हम जो भी आपके पेंडिंग पॉइंट्स होंगे, या कुछ वैसे हमारे क्वेरीज़ होंगे जो मैंने during the sheet एड्रेस नहीं किए होंगे, वो भी हम during the conversation वो add कर लेंगे। सो, इन पॉइंट्स पे हम going forward, या हां, going forward हम इन पॉइंट्स को एड्रेस करेंगे, with proper ownership and with proper due date। ठीक है?
+Sudarshan Bhamare
+03:26
+ग्रेट, ठीक है।
+Sachin Kumar
+03:27
+और ये शीट मैं आप लोगों के साथ भी शेयर करूंगा। Just verify and put your remarks, and जो भी exceptions होंगे, Izmetic और NHS Secure की टीम मिल के next 1 or 2 week में इसको fix करेंगे। ठीक।
+Sachin Kumar
+03:42
+ठीक है? स्क्रीन शेयर करता हूं। ठीक है। सो, यहां पे एजेंडा है। एजेंडा में रहेगा कि कौन कौन से सॉल्यूशंस हमने implement किए हैं, then their utilization and license coverage क्या है अपने पास। After then हम discuss करेंगे सिक्योरिटी पॉश्चर and exceptions का, what are the exceptions in security posture, then phase two which we have decided earlier but we have not started। Okay, and then next steps। So, सॉल्यूशन पोर्टफोलियो में हमारे पास है JumpCloud, Check Point ADR, Check Point का Harmony Email Security, Power DMARC, Phishing Solution जी स्केलर जीआईए, जो अभी implemented है अपने end पे। हमें पता है JumpCloud के through हम क्या करते हैं, identity and device manage करते हैं। Centralized identity है, device management है, device MFA है, through हम patching and policy enforce करते हैं। बस अभी दे दिया सबके। Check Point ADR। Check Point ADR का AI-driven Behavioral Threat Detection and every endpoint है, और सारे endpoint हमारे protection mode पे हैं। It will protect us from the ransomware and zero-day prevention, and auto limitations is also enabled। In case of email security, email security हमारा prevent mode पे है। ये inbound email scanning को anti-phishing and anti-abuse से चेक करता है, and it will protect us the zero-day attacks and click time URL protections। Okay। For Power DMARC, हमने SPF indicator set कर रखा है, and DMARC की policy हमारी 100% quarantine है। In case of जी स्केलर, हमारा prevent mode पे चल रहा है, और जो भी policies हैं जो whitelisted हैं या allowed हैं, as per हमारे पास request आती हैं, उसी के accordingly for particular user या particular user group को allow है। हम जी स्केलर की policies, exceptions, file type exceptions, cloud और URL पे भी discuss करेंगे during this call। ठीक है? फिर उसमें से हम ये find out करेंगे कि current stage में हमारे पास ना काफी ज़्यादा policies हैं, इसको कैसे हम थोड़ा सा clean up कर सकते हैं, as we have discussed earlier। ये जो ISO है, जो phase two के steps हैं, ये हमने discuss कर रखा था, और over the emails भी आपने चेक किया होगा। लेकिन इस पे कुछ अभी next step का, next step या phase हमने कब से शुरू करना है, वो कोई timeline नहीं आया। And one more thing, सचिन जी, हम लोग ना आपसे VAPT के लिए ना कुछ detail मांग रहे हैं, कि at least आप अपना infra का detail या जो जो VAPT के scope में आएगा, तो at least हम कुछ scope define कर पाएं। VAPT start करना is another process, but हमें at least हमारे पास ना सर्वर की और नेटवर्क की और अपने infra की inventory हो, जो हमारे critical हैं और जिनका VAPT करवाना है। ठीक है? क्योंकि आप ISO पे जाओगे तो—
+Sudarshan Bhamare
+07:08
+नहीं, मेरे ख्याल में last time हमने connect किया था, दादा साहब ने तो आपने बोला था कि दो तीन डिवाइस पे हम test कर लेते हैं, तो—
+Sachin Kumar
+07:16
+नहीं, वो हमने internal network का किया था जिसकी हमने report भी share किया था। अब next part ये आ जाता है कि इसको हम resolve कैसे करेंगे। ओके। वो हमने internal network का किया था। अभी हमने कर— internal network का हमने कर लिया, लेकिन इसका resolve नहीं हुआ। हमें पता नहीं चल पाएगा वो कैसे, इसका status क्या है। Internal network का। और external, और आपके सर्वर का, और जो और external network surface का, इसका VAPT नहीं हुआ। तो आप पहले हमें scope बताएंगे कि ये ये details हैं, ये मेरा network infra है, इसका मुझे VAPT access करना है। ओके।
+Sachin Kumar
+07:50
+ठीक है। And ISO का सर क्या status है अभी अपना? ISO का अभी, जैसे मुझे लग रहा है first time certificate मिला है, शायद इसको जो assessment होता है first time वो नहीं हुआ है अभी। हम्म। अभी एक बार—हां, ISO का है, but मुझे लगता है वो renew करना पड़ेगा। हां, हां। तो ISO renewal के लिए भी हमें VAPT must है। वो मांगेगा कि last year का VAPT की report वग़ैरह submit करें।
+Sudarshan Bhamare
+08:22
+ठीक है।
+Sachin Kumar
+08:23
+ठीक है ना? Definitely will ask for VAPT। And इसमें जी स्केलर private access का था part, जो हमने phase two में रख रखा था कि जो भी हमारी Izmetic की internal applications हैं, CRM हैं, या और भी applications हैं, वो publicly क्यों available हैं। वो सिर्फ़ और सिर्फ़ internal user के लिए हैं, तो internal ही access हो। ठीक है? And for phishing simulations, we have conducted a phishing simulation exercise in May 2026। ठीक है? Last to last month हमने conduct किया था। Hope आपके पास report— आपको report मिल गई होगी। मैंने, from our team, रमन ने send किया होगा report आपके पास। हम्म, हम्म। ठीक है? एक बार आप चेक कर लेना report का। ठीक है? और हम, for this quarter, हम इसको schedule करेंगे next month, in the month of August।
+Sudarshan Bhamare
+09:16
+ठीक है। और एक और एक point था, एक हम, जैसे अभी मुझे याद नहीं आ रहा, but हमको user को awareness training देना था ना एक, कि हर—
+Sachin Kumar
+09:29
+User awareness training नहीं, हां, user awareness training भी देना था। ठीक है? Awareness training। Awareness training। तो awareness training हमें कैसे देना है? वीडियो के, वीडियो की trainings दे दें या कौन सी training देनी है?
+Sudarshan Bhamare
+09:46
+कोई भी चलेगा। Existing कैसे करते हैं? अभी like हमारे जो customers हैं, तो उसमें कैसा रहता है, तीन चार वीडियो देते हैं, वो छोटे छोटे, small, या फिर एक course, course consider कर लो, पांच पांच मिनट के वीडियोज़ रहते हैं, और at the end कुछ दस बारह questions रहते हैं उसके ऊपर, ऐसा। तो आपको minimum criteria रहता है कि आपको at least 60-70% सही answer आना चाहिए, तभी आप वो—
+Sachin Kumar
+10:13
+अच्छा। अच्छा। तो अभी हमारे पास जो concept है, वो है चार पांच में वीडियोज़ हम finalize कर लेते हैं, जैसे किस किस topic पे हमें देना है awareness training। ठीक है? वो इसका एक, इसका link चला जाएगा सब users के पास। ठीक है? And users वहां पे जा के अपनी training कर सकते हैं, और हमें उसके बाद उसका status दिख जाएगा कि किस user ने कितना complete किया है। चलेगा ये point? हम्म, ठीक है।
+Sachin Kumar
+10:42
+ठीक है? और topic हम decide कर लेंगे कि कौन कौन सा, कौन कौन सा topic पे करना है। ये most probable हम इसको Friday को मैं एक बार आपको process go through करवा दूंगा, और next week आप बोलेंगे तो next week हम schedule कर लेंगे awareness training। At least pilot user के लिए schedule कर लेंगे। आप चेक कर लेना, ये ठीक रहेगा तो next week, next week या next month से हम complete online session पे डाल देंगे। Yes, ठीक है।
+Sachin Kumar
+11:13
+ठीक है? ठीक है। तो अब अंदर सब ने हो गया। And second, ये, ये slide है for tool utilization and license coverage। जैसे JumpCloud के हमारे 350 licenses हैं, तो 350 utilization है। Check Point ADR भी उतना ही है। लेकिन जो Check Point Harmony Email है ना, ये count थोड़ा सा mismatch हुआ है। Check Point Harmony Email अभी भी हमारे पास 434 का count है।
+Sudarshan Bhamare
+11:45
+अच्छा, Harmony Email का। हां, ये Harmony Email का।
+Sachin Kumar
+11:49
+शायद वो list भेजा था ना आपको, कि कौन सा रखना है, कौन सा नहीं रखना। नहीं। इसके लिए फिर उसका different step हो जाएगा ना। Actually क्या है कि अभी हमारा जो integrate है ना, जो Microsoft के साथ जो जिस, इसका Check Point Harmony integrate है, वो all group में integrated है। तो फिर हमें इसकी configuration फिर से करके ना, तो selected group पे ही डालना पड़ेगा। अच्छा। मैं आपको detail share करूंगा कि कौन से 92 users ऐसे हैं जो protected हैं, जो additional हैं। मैं by the end of this sheet, slide, में वो share करूंगा आपके साथ। ठीक है? हम्म।
+Sachin Kumar
+12:31
+तो Power DMARC policy 100% quarantine पे है। ठीक है? Phishing simulation exercise हमने complete कर लिया है। बाकी जो, जो नीचे हैं, Web and Email DLP, GPA, VAPT scope, and ISO, it's pending, ये हमारे confirmation के लिए awaited है। ठीक है? हम्म। अच्छा, अब हम बात कर रहे हैं security posture की। बात कर रहे हैं identity की। तो हमारे पास जो total अभी identity है, जब मैं JumpCloud और Harmony Email को मिला दूं, तो मेरे पास identity है total 442 users की, जो unique user हैं। JumpCloud में हमारे पास हैं 350 users, और जो JumpCloud और Harmony Email दोनों में हैं, वो हैं 342। 8 ऐसे user हैं जो JumpCloud में हैं लेकिन email security नहीं है।
+Sudarshan Bhamare
+13:23
+ओके।
+Sachin Kumar
+13:25
+मैं आपको ये sheet दिखाऊंगा अभी। ठीक है? बिल्कुल। ये 92 users ऐसे हैं, जैसे मैंने दिखाया, 350 users हैं JumpCloud में, 92 users हैं जो email में हैं लेकिन इनकी JumpCloud में नहीं है। तो जा के 442 हैं। 4 devices ऐसी ही हैं, 4 user ऐसे हैं जिस पे कोई device mapping नहीं है। 47 users ऐसे हैं जो हमारे पास password expired है। ठीक है? ठीक। मैं आपको दिखाता हूं। ये मेरे 4 users ऐसे हैं, सुनोनी, सनिका, तरुण, और सत्यम, JumpCloud में, इनके पास कोई device नहीं है। अच्छा। ठीक है ना? और ये JumpCloud में 5 devices ऐसी हैं जिस पे कोई user assign नहीं है।
+Sudarshan Bhamare
+14:21
+हम्म। ठीक है?
+Sachin Kumar
+14:24
+दादा? ये दादा के साथ ये sheet share करेंगे।
+Sudarshan Bhamare
+14:30
+वो device को आपने एक बार दिखाना। वो user active है क्या दादा? ऐसा कुछ पता है। और चलो, फिर करा दे जाएं। ठीक है, इसमें से तीन तो मैंने delete कर दिया। Pause तो पाओ। ठीक है, आप share कर दो, मैं चेक करता हूं।
+Sachin Kumar
+14:46
+Cross-check भी कर सकते हैं। ये recent data है। अगर कुछ issue हो तो हम अभी भी चेक कर सकते हैं। ठीक है? नहीं, आप ये भेज देना बाद में slide, तो जो भी points हैं। हम्म। ये हमारा था user identity का portion, ये हमारा device endpoint का portion। तो total unique devices हैं, वो हमारे पास 363 हैं। एक बार आप इसको cross-check करोगे कि 363 exactly हैं या नहीं हैं। 299 हमारे पास devices ऐसे ही हैं जिसमें ADR, JumpCloud, और जी स्केलर सब कुछ है। अच्छा। 322 devices ऐसे ही हैं जिसमें ADR और JumpCloud है। ठीक है ना? 11 devices ऐसे ही हैं जिसमें JumpCloud नहीं है। मैं आपको show करता हूं। ठीक है? हम्म। ठीक है? 9 devices पे MFA enable नहीं है, 36 devices पे ADR नहीं है। ठीक है।
+Sachin Kumar
+15:38
+ठीक है? और 38 devices ऐसी हैं जिस पे policy failed है। ठीक है। ठीक है? ये अब मैं excel sheet में share करता हूं, इसमें ये सब clear हो जाएगा। हम्म। ठीक है? हम्म। तो as per जो हमारे exceptions हैं, तो हम according to critical exceptions हम डाल देते हैं कि ये हमारे counts हैं। जैसे password expired है, ये चेक करना है कि password expired है। जिस पे, जी स्केलर नहीं है, तो वो devices चेक करनी हैं कि इसमें जी स्केलर होने चाहिए, नहीं होने चाहिए। अगर किसी user ने नहीं कर रखा है तो उस user को बोलेंगे कि आप enroll करो। क्योंकि licenses हैं, और हमारे पास जी स्केलर, मैं बात करूं तो 327 ही use हो रहे हैं अभी। ठीक है।
+Sachin Kumar
+16:36
+जैसे ये 92 email ID ऐसी हैं जो JumpCloud में नहीं हैं। तो यहां पे आप, दादा साहब, remarks डाल देना जो, कि जी इस पे हमने exception कर रखा है, तो क्यों कर रखा है। क्योंकि ये हमारी ना, इनकी devices secure नहीं हैं। ये email protected हैं, but devices इनको कोई assign नहीं हैं, तो हमें नहीं पता कि ये company की devices use करते हैं तो secure हैं या नहीं हैं। ये भी list भेजा था मैंने ना, जो निकालने हैं email, इसका list भी भेजा था शायद मैंने। मतलब इसमें से तो कुछ generic ID होंगी।
+Sudarshan Bhamare
+17:18
+हां तो वही list मैंने भेजा था शायद कि इसमें से कौन कौन से filter करने हैं।
+Sachin Kumar
+17:25
+ओके, ओके। तो एक बार आप ये ना, हम ऐसे करते हैं ना, ये मैं आपको ना drive पे share कर दूं। और ये भी हम इसी list पे एक बार work कर लें तो next going forward हम यही sheet पे work करेंगे। ठीक है। ठीक है? तो बार बार अलग sheet नहीं बनानी पड़ेगी। क्योंकि जो आपने भेजा होगा last 3 या 4 months पुराना होगा। ठीक। I mean इसमें कुछ ऐसी भी IDs आई होंगी कि जो valid ID होंगी। ठीक है? ये devices ऐसी हैं जो JumpCloud में हैं लेकिन email security नहीं है। ठीक है। ठीक है? इसमें से 2 suspended भी हैं, 3 suspended हैं, बाकी 5 activated हैं। हम्म।
+Sachin Kumar
+18:15
+ठीक है? JumpCloud में 3 IDs suspended हैं, बाकी 5 activated हैं। ठीक है दादा? ये थोड़ा सा चेक करना है आपको। अगर JumpCloud में है तो। ये email पे भी secure होना चाहिए। और ये जी, email पे हमने ना, जब integration के time पे all organization कर रखा है, तो ये 8 IDs रह कैसे गईं?
+Sudarshan Bhamare
+18:39
+आपने add हुआ।
+Sachin Kumar
+18:42
+हम्म। एक बार इनका group, एक बार इनका group भी चेक कर लेना। इनका group कौन सा है? कुछ different group है या क्या है? वैसे नीचे note डाल दो, check group। हां जी? मैं add वग़ैरह नहीं हुआ होगा। दादा साहब, आवाज़ नहीं आ रही आपकी, बताइए।
+Sudarshan Bhamare
+19:02
+Group में वग़ैरह add नहीं हुआ होगा ना, ऐसा कुछ है कि फिर? हां।
+Sachin Kumar
+19:05
+नहीं, नहीं, नहीं। अच्छा, हो सकता है वो, वो चेक करना पड़ेगा।
+Dadasaheb Misal
+19:08
+ये सुनोनी, ये सुनोनी को assign नहीं हुआ है, आदेश delete हुआ है, अपरूल delete हुआ है, गौरव delete हुआ है, कस्तूर, साक्षी, और गिरिजा, इन तीनों का मैं देखता हूं कि क्या है, क्या scene है।
+Sachin Kumar
+19:20
+ये सुनोनी को कोई assign नहीं, device नहीं assign है क्या? नहीं, नहीं, अभी device assign नहीं हुआ है, इसको करना है। अच्छा। अच्छा, लेकिन फिर ये हम device की बात नहीं कर रहे, ये हम email security की बात कर रहे हैं।
+Sudarshan Bhamare
+19:37
+Email, कौन सा mailbox activate है इस वक्त ना, दादा?
+Sachin Kumar
+19:42
+Mailbox activated है, एक मिनट। चेक कर लें।
+Sudarshan Bhamare
+19:50
+एक मिनट, सुबह से।
+Sachin Kumar
+19:51
+हां। आशीष, JumpCloud को देखो। आशीष? आशीष मैट्रिक्स, JumpCloud? देखते हैं ना। आशीष जी, यहां पे जो information है, वो last refresh कब किया था आपने? आज का, आज का। आज का है ना? आज की information है, morning। ठीक है, ठीक। इसलिए, actually, ये annex 360 पे भी data है, लेकिन वहां पे ना थोड़ा सा confusing था, इसलिए ये manually हमने refresh करके ये create किया है अभी। हम्म, हम्म। ठीक। और verify भी किया है with आशीष। आशीष अभी किसी दूसरी call में है। आशीष, join करोगे क्या इसमें? एक बार फिर आज इस call पे आ जाओ। आपने table को खत्म कर दिया? हम्म, ऐसे ही पढ़ी होगी आपकी इसमें। ये इसको, इसको अभी कोई device नहीं है सुनोनी को।
+Dadasaheb Misal
+21:27
+सचिन जी, इसको device assign नहीं किया है अभी तक, मतलब device दिया नहीं है, वो दिया जाएगा इस week में।
+Sachin Kumar
+21:33
+ठीक है, ठीक है, ठीक है। ठीक है। और ये कस्तूर, गिरिजा, और इनका क्या, इनका क्यों दिख रहा है? किसका?
+Dadasaheb Misal
+21:43
+कस्तूर, गिरिजा, और साक्षी।
+Sachin Kumar
+21:51
+गिरिजा के पास device नहीं है क्या? गिरिजा के पास device तो है, but ये check point में नहीं है, email पे नहीं है ये।
+Sudarshan Bhamare
+22:14
+अच्छा।
+Dadasaheb Misal
+22:17
+क्योंकि ये तीनों, कस्तूर, गिरिजा, और साक्षी, इन तीनों का तो ये है, device allocated है इनको।
+Sachin Kumar
+22:25
+नहीं, device allocated different part है, but जब कोई email ID create हो रही है—Install नहीं होगा ना?
+Sudarshan Bhamare
+22:32
+वो शायद enable नहीं किया होगा ना, push नहीं किया होगा agent।
+Sachin Kumar
+22:38
+ये इसका agent से लेना देना नहीं है। इसका agent से कोई concern नहीं है। इसका concern है जब email ID create हुई तो उस group में create हुई कि मेरे पास जो check point का group है, इसके अंदर protected है या नहीं है। हम्म। Check point को open करता हूं। आशीष, check point पे जा के। हम्म। Check point। एक मिनट। आशीष, ये आ रहा है, ठीक है ना? Yes। वो 34 user हैं, इसमें गिरिजा नहीं है। ठीक है दादा साहब, ये आप चेक कीजिएगा एक बार। हम करके चेक करते हैं, yes। हां। और एक, हमेशा concern ये है कि 47 user के password expired हैं।
+Sudarshan Bhamare
+24:47
+वो या तो client location पे रहेंगे। अच्छा।
+Sachin Kumar
+24:51
+इनको फिर से email भेजते हैं, reminder डालते हैं। अच्छा, अच्छा। Client location पे होंगे। एक बार आप चेक, cross-check कर लेना। client location पे होंगे तो फिर क्या, वो फिर अपनी device कब use करेंगे? कभी use करेंगे या कैसे होता है? अभी वो user देख के पता चलेगा। चलो ठीक है, मैं एक बार share करता हूं आप लोगों को। और इन user ने ना MFA enable नहीं कर रखा है। user MFA, ज्योति टर्मर, विकास, रुचिरा, हिमांशु, सुशील डाल दी।
+Sudarshan Bhamare
+25:32
+कर देंगे इस पे, ठीक है।
+Sachin Kumar
+25:34
+इनका device भी enable है। वो पीछे कुछ issue आ रहा था ना अभी, तो इसके लिए इसको disable किया था। अच्छा, और हम ना, अभी मैं दिखाता हूं आपको ना, जिन devices पे ADR नहीं है, JumpCloud है, ADR नहीं है, मैं दिखाता हूं। ठीक है। ये सारी devices, ये कहां पे, right end पे रहती हैं? कहां रहती हैं devices?
+Sudarshan Bhamare
+26:12
+ADR agent automatically push होता है ना, वो तो manually करने की ज़रूरत नहीं, right?
+Sachin Kumar
+26:17
+इसमें push नहीं हुआ है क्या?
+Sudarshan Bhamare
+26:20
+हां, मैं वही पूछ रहा हूं, एक बार देख लो, वो device कब active है, फिर वो भी देख लेते हैं। अगर वो active नहीं रहेगा तो कर लेंगे। आप push कर दो पीछे से। राकेश?
+Rakesh Patel
+26:36
+जी सर।
+Sachin Kumar
+26:38
+राकेश, एक बार ये चेक कर लें आप। ठीक है। ये जो—
+Rakesh Patel
+26:41
+मैं actually last seen देखूंगा, मतलब कब active हुईं, इसके according पता चल जाएगा।
+Sachin Kumar
+26:47
+Last seen होगा इसमें। ये रहा, last login ये रहा, 20/07, 16/07, 14/05। recent ही है, 1/07, 17/07। ठीक है।
+Rakesh Patel
+27:05
+ठीक है सर, चेक कर लेते हैं।
+Sachin Kumar
+27:08
+हां, ये 36 devices ऐसी हैं जिन पे ADR login है, ADR नहीं है। और out of 36, 30 devices ऐसी हैं जो जिस JumpCloud में भी हैं। कुछ devices ऐसी हैं जो JumpCloud में नहीं हैं, लेकिन जी स्केलर में हैं।
+Sudarshan Bhamare
+27:39
+ऐसा कैसे? ठीक है।
+Sachin Kumar
+27:41
+हम्म। हैलो?
+Sudarshan Bhamare
+27:46
+ऐसा कैसे, मतलब जी स्केलर है और JumpCloud है?
+Sachin Kumar
+27:50
+हां, हां। ऐसा इसलिए होगा क्योंकि ये जी स्केलर पे last seen है 45-52-81। in the mean क्या हुआ होगा, या तो ये devices हैं, वो हमने remote पर दिए होंगे, but जी स्केलर का जो dump लिया है, वहां पे ये devices available हैं। ठीक है। मैं आपको device भी दिखाता हूं। आपको device दिखाता हूं। ये वैसे ही devices हैं, 11, ठीक है ना, जो JumpCloud में नहीं हैं हमारे पास। ठीक है? ओके। 11 में से 1, 2, 3, 4, 5, ऊपर की जो 5 devices हैं, ये check point में हैं। ठीक है? ये 5 devices ऐसी हैं जो check point में हैं। अब इनका कैसे पता करें कि ये JumpCloud से check point push होता है तो JumpCloud यहां से कैसे remove हो गया?
+Sudarshan Bhamare
+28:57
+वही।
+Sachin Kumar
+29:03
+राकेश, हमें पता चल पाएगा कि इसमें JumpCloud पहले था या नहीं था?
+Rakesh Patel
+29:11
+आह, report में दिख जाएगा सर, एक, आह, इसमें।
+Sachin Kumar
+29:17
+आपको ये मैं कर दूं?
+Rakesh Patel
+29:18
+ऐसा भी हो सकता है कि JumpCloud install रहा हो और कुछ problem हुई हो, तो remove करने के बाद JumpCloud दोबारा install करते हैं तो वो दूसरे, मतलब duplicate बन जाता है। हम्म।
+Sachin Kumar
+29:35
+तो duplicate बन जाता है, तो नाम हम same रखते हैं या नाम change कर देते हैं?
+Rakesh Patel
+29:41
+नाम maximum से, आह, edit करते हैं हम, same से ही edit करते हैं।
+Sachin Kumar
+29:45
+हां, तो ये device नहीं है ना, साक्षीत सालेह है। ठीक है। और ये last seen भी 21 जुलाई का है। 21 जुलाई, आज का ही seen है। राकेश, एक बार ये चेक करना करो यार। ठीक है। ठीक है। ये 5 devices हैं जो ADR में हैं और JumpCloud में नहीं हैं। ठीक है? और ये हैं 6 devices, ये जी स्केलर में हैं, 9 check point में हैं, 9 कहीं और हैं। लेकिन इनका जो login time भी है, वो कुछ ज़्यादा ज़्यादा था। और यहां पे serial number भी दे रखा है। तो, आह, दादा साहब या सुदर्शन जी, हम लोग कुछ, आह, asset का detail बनाते हैं क्या? कौन से serial ने, किस user को assign है, इस kind का?
+Sudarshan Bhamare
+31:12
+हम्म, नहीं तो group में assign करते हैं ना हम लोग, location wise।
+Sachin Kumar
+31:16
+हां, group में assign करते हैं। जैसे ये मुक्तेश्वर जोशी है, ठीक है? हम्म। अब इनको, इनके पास device change होगी। इनके पास most probably शायद दूसरी device होगी। और ये जो previous device है, ये remove कर दी या हमारे stock में है, वो कहीं पे हम data collect करते हैं क्या?
+Sudarshan Bhamare
+31:38
+नहीं। दादा? पुराना, old, old device name पूछ रहे हो ना आप?
+Sachin Kumar
+31:44
+हां। actually क्या होगा, अब मैं आपको ना एक, मुक्तेश्वर जोशी, दोनों ने चेक किया। इनके पास new में device है, जब हमने but serial number चेक किया तो device का serial number different था।
+Sudarshan Bhamare
+32:05
+नया device वग़ैरह दिया होगा फिर, ऐसा पूछ रहा हूं आपको।
+Sachin Kumar
+32:07
+हां, exactly, exactly। नया device दिया होगा। तो पुराना device हम, मतलब क्या, customer से, मतलब user से लेते हैं device या?
+Sudarshan Bhamare
+32:18
+नहीं, लेते तो हैं, obviously। अभी कभी कभी क्या हो रहा था ना, user को कुछ issue आ रहा था तो उसको नया device देना पड़ रहा था। तो in that case फिर वो replacement कर रहे थे।
+Sachin Kumar
+32:31
+हां। JumpCloud वग़ैरह replace हो गया, वहां पे पुरानी entry आ गई है। जैसे हम ये चेक कर रहे हैं, इसकी entry है, मुक्तेश्वर की, PG-025। 4 आ रहा है इसमें। ठीक है? और 4 आ रहा है इसका यहां पे QI। मतलब most probably use होता है कि पुरानी device है। तो एक बार ये भी cross-check कर लोगे तो ये 6 entries जो जी स्केलर में हैं, बाकी कहीं नहीं हैं, ये most probably पुरानी entries होंगी।
+Sudarshan Bhamare
+33:02
+हां। कुछ कुछ user duplicate भी है ना इसमें, वहां पे, जी स्केलर में। अभी विक्रांत शिंदे, विक्रांत शिंदे का jet scaler नहीं रहेगा क्योंकि वो रिलायंस पे काम कर रहा है।
+Sachin Kumar
+33:13
+हाँ, तो विक्रांत शिंदे का नहीं रहेगा, ठीक है। इनका JumpCloud भी नहीं है।
+Dadasaheb Misal
+33:20
+नहीं, JumpCloud भी नहीं है। JumpCloud भी नहीं है क्योंकि उन्होंने बोला है कि वो required ये है, remove करके देना है उनको। वो project requirement है, वैसे रिलायंस।
+Sachin Kumar
+33:29
+ठीक है, ठीक है, ठीक है। तो हम वो अपना point डाल देंगे उसमें। और, और यदि जिस user पे, जो हमारे पास users हैं, जिस पे jet scaler नहीं लगा हुआ, क्योंकि हमारे पास licenses हैं 350 के, और हम use नहीं कर रहे हैं, तो at least वो तो use कर लेंगे।
+Dadasaheb Misal
+33:46
+Yes। और सिंधु, मुक्तेश्वर, and सायेश, इन तीनों का laptop replace हुआ है। विकास, जयेश, वो इनका देखना पड़ेगा, क्या issue है।
+Sachin Kumar
+33:55
+तो आप उसमें remarks में डाल देना। और ये security door NXSQR, ये हमारी वाली AID है। ठीक है? ठीक है।तो इसमें हमें main जो हमें check करना रहता है, मैं आपको दिखाऊँ। हम ये check करेंगे, जो 8 user के पास no security है, 8 user, वो check करेंगे। 4 user ऐसे हैं जिनको कोई device map नहीं है। हमारा license count हो जा रहा है, लेकिन उन 4 के पास कोई device count नहीं है। कोई device add नहीं है। 4 user, मैं आपको दिखाता हूँ कौन से हैं। ये सनिका, तरुण, और सत्यम। ये पुराने user हैं या new user हैं?
+Dadasaheb Misal
+34:48
+नहीं, ये पुराने user हैं। तरुण कुमार तो इंडिगो में है। सत्यम, सत्यम project में था, अभी उसको check करना पड़ेगा, वो सलोनी, सलूकान, सलोनी and सनिका हैं ना, उन दोनों को device assign होने वाला है। उनको खाली हमने license assign करके रख दिया है।
+Sachin Kumar
+35:04
+अच्छा, अच्छा, अच्छा। तो आप check कर लीजिएगा।तरुण का और सत्यम का check करते हैं।और JumpCloud में 5 ऐसी भी devices हैं जो किसी को assign नहीं हैं।
+Dadasaheb Misal
+35:19
+Check करता हूँ।
+Sachin Kumar
+35:21
+ठीक है। और इन 9 devices पे MFA नहीं है।
+Dadasaheb Misal
+35:29
+कौन से 9 हैं, किधर हैं?
+Sachin Kumar
+35:31
+ये हैं 9।
+Dadasaheb Misal
+35:33
+कार्तिकेश, श्रीवास्तव, विकास, जयेश, सोलंका, पांडे, जॉन का तो नहीं पता। मेरा, हाँ, मेरा तो मैंने बंद करके रखा है, सृष्टि।क्या चल रहा है?
+Sachin Kumar
+35:50
+ठीक है, कर दो enable, सबका enable कर दो।हाँ, सबका enable करना है। तो मैं क्या कर रहा हूँ, अभी ना आपके पास ये sheet मैं share कर रहा हूँ, तो most probably कल या परसों, कल तो नहीं, परसों, आप बता दो, दो-तीन दिन में एक बार आप राकेश से बैठ के JumpCloud और check point के जो भी exceptions हैं, वो clear करवा लो। क्योंकि check point 30 devices में नहीं है। वो at least push करवा लो, कल की priority रख लो, आप जैसा भी हो। ठीक है? और policies मैं check कर रहा हूँ कि FDA की policies बहुतों में failed हुई हैं। 31 devices ऐसी हैं जिसमें BitLocker की policy failed है।
+Sudarshan Bhamare
+36:35
+तो वो policy, उसके लिए क्या करना पड़ेगा फिर? हम फिर से force कर सकते हैं ना backend से?
+Sachin Kumar
+36:42
+हाँ, backend से check करेंगे।
+Sudarshan Bhamare
+36:46
+राकेश, तुम एक बार फिर से push कर दो ना, जो-जो users हैं।
+Rakesh Patel
+36:49
+आह, जी सर। actually BitLocker की policy maximum failed तब होती है सर, जब hardware requirement complete नहीं होता।अच्छा।या तो, हाँ, legacy mode से, मतलब BIOS में जाके उसको UFI mode पे हमें convert करना होगा manually। तब encrypt होगी device। maximum यही cases आते हैं failed का।
+Sachin Kumar
+37:12
+ये आपने देख रहे हो? Mostly में full case encryption की policy failed है, राकेश। कहीं पे restrict control panel भी failed है। एक बार ये policy का status check करना। और यदि, आह, non में failed है, एक बार आप और push करोगे, फिर से यदि failed होता है due to hardware device hardware capacity, तो हम ये point raise कर देंगे with this metric thing। सर, आह, for below devices, this policy has failed due to hardware restriction। ठीक है सलोचन जी? ठीक है।At least जो भी exception, हाँ, at least जो भी exceptions हों, वो हमारे well known हों। ऐसा ना हो कि बाद में आके हमें पता चला, अरे, हमने ये तो कर रखा था, ये कैसे रह गया।
+Sudarshan Bhamare
+38:10
+हम्म, हम्म।ठीक है?
+Sachin Kumar
+38:11
+और हम ये monthly meeting ना, हर month में करेंगे। जैसे इस बार हम थोड़ा सा delay हो गए, 21 तारीख हो गई, ये first, हम इस metric के साथ conduct कर रहे हैं। next monthly meeting हम सोच रहे हैं, करेंगे, 15 से पहले कर लेंगे। कि जो भी changes हमने इस monthly meeting में suggest किए हैं, as per policies।हर month के पहले week में आप कर दो ये schedule।हाँ, first week में, ठीक है। कीर्ति मैम, इसको month के first week में schedule कर दो। अब इस बार कर लेते हैं, हाँ, at least हमें status पता चल जाएगा कि, क्योंकि इस बार pending points काफी हैं हमारे पास। तो at least वो cover किए कि नहीं किए। और जो cover नहीं किए हैं, उसमें हम एक remarks डाल देंगे कि white bar, white has not covered। ठीक है?
+Sachin Kumar
+39:01
+हम्म, हम्म। ठीक है। आप ये दोनों, हाँ, आगे आप।नहीं, नहीं, ये complete है अपना। मैं ये दोनों sheet आपके साथ share कर देता हूँ। आपको इस sheet में कहीं पे भी कुछ doubt लगे या कुछ हमें पूछना हो, तो हम कल या परसों भी connect कर सकते हैं। लेकिन इसको ना, go through आप कर लेना। Otherwise थोड़ा सा delay हो जाएगा ना, फिर, आह, points जो हैं वो pending रह जाएंगे।हम्म, हम्म।
+Sudarshan Bhamare
+39:30
+ठीक है?
+Sachin Kumar
+39:31
+In the meantime, राकेश क्या करेंगे, दादा साहब के साथ connect करके JumpCloud के regarding जो भी, आह, points highlighted हैं, check point से लेकर।JumpCloud से policy push कर देंगे। ठीक है।ठीक? और जो हमारे exceptions वाले point हैं, उसमें आप remarks डाल देंगे।आवाज नहीं आ रहा, सचिन जी।आ रहा है? हाँ जी, हाँ जी। अब clear है? Yes।Hello? Yes, yes।हाँ जी, हाँ जी। ठीक है?
+Sudarshan Bhamare
+40:09
+ठीक है, चलेगा।एक बार go through कर लें? उसका क्या करना है?
+Dadasaheb Misal
+40:13
+कौन सा? वो तो आपके side, आपने तो आपके side की पूरी list, PPT तो share कर दी, but जो main issue चल रहे हैं, उसका क्या करना है?
+Sachin Kumar
+40:20
+आप मुझे main issue बताइए। एक हमारा है password वाला।
+Dadasaheb Misal
+40:25
+दूसरा है ये आपका MDM वाला।
+Sachin Kumar
+40:29
+MDM वाला क्या issue है?
+Dadasaheb Misal
+40:31
+After password reset, उसको script run करना पड़ता है। नहीं तो वो से उधर जाके उसको metric को remove करना पड़ता है।
+Sachin Kumar
+40:38
+MDM के लिए ना, ये password के लिए आशीष ने एक request डाल रखी है क्रिस सर के साथ, कि एक बार connect कर लो, करते हैं।Okay. उनके पास कोई final, हाँ, हाँ, क्रिस, क्रिस की तरफ से कुछ अभी final नहीं आया। आशीष भाई, कुछ आया update? एक बार वो डाल दो। उसमें IT support है, आप check कर रहे होंगे, दादा साहब, यदि आप IT support की ID में added हैं, तो आशीष ने उसको भी mark कर रखा है CC में।
+Dadasaheb Misal
+41:17
+ठीक है ना? और तीसरा है software का, कुछ-कुछ software हम बार-बार वो update, chocolate में जाके updated software लेना पड़ते हैं। तो update क्यों नहीं हो रहे वो?
+Sachin Kumar
+41:26
+अच्छा। क्या करना पड़ता है हमें?
+Dadasaheb Misal
+41:30
+मतलब अगर मैंने किसी को software assign करना हो, वो laptop में उसको, वो push नहीं होता है। क्योंकि फिर वही software मुझे chocolate में जाके new add करना पड़ता है।
+Sachin Kumar
+41:43
+राकेश, कौन सा point है ये?
+Rakesh Patel
+41:47
+आह, सर, chocolate के, ये chocolate through जो software हम deploy करते हैं, तो इससे related, उनसे भी बात हुई थी, तो उन्होंने बोला था कि कभी अगर आपका software update या push नहीं होता, तो आपको दुबारा chocolate organization जाके, आह, जो value होती है, दुबारा आपको put करनी होगी, तो वो work करेगा। Same जैसे अभी दादा साहब explain कर रहे हैं।
+Sachin Kumar
+42:09
+तो दादा साहब, ये हमें सब cases में करना पड़ता है या कुछ cases हैं ऐसे?
+Dadasaheb Misal
+42:14
+कुछ-कुछ cases में, सब में नहीं।
+Sachin Kumar
+42:17
+दादा साहब, अब ये OEM का ही case है। यदि, आह, कुछ version वगैरह update होते हैं pending backend में, और इसलिए वो install नहीं हो पाते। यदि आप नया version डालोगे, और यदि हम chocolate के through install करते हैं, तो ultimately जब patch होगा, तो वो patch भी हो जाते हैं। अच्छा राकेश, इसमें एक pending point रह गया, मेरा patch का। आप patch का status भी बता दो, क्योंकि patching का क्या status है? OS और third-party applications, जो JumpCloud के through हैं।नहीं।हम्म? राकेश, आप—
+Rakesh Patel
+42:56
+एक मिनट, मैं बताता हूँ। हाँ जी, हाँ जी, हाँ जी, बता रहा हूँ, सर। मैं screen share करूँ?
+Sachin Kumar
+43:04
+हाँ, please do।Okay।
+Rakesh Patel
+43:16
+So अभी जो patching devices level पे हैं, हमारी 131 और 2+19, ये up to date हैं। और—
+Sachin Kumar
+43:32
+ये OS patch है ये।आपके devices हैं—350।
+Rakesh Patel
+43:39
+100 के करीब आपकी, हाँ, old, हाँ, old devices। और करीब आपकी 24+8, हाँ। ये है Windows 10, out of service, end of service।
+Sachin Kumar
+43:53
+कितनी devices हैं ये? 42।
+Rakesh Patel
+44:00
+ये, ये 82।
+Sachin Kumar
+44:03
+42 and 24, 8।24+8।हम्म। तो ये भी mention कर देना कि ये end of service devices हैं। तो ये version तो update हो गए।
+Dadasaheb Misal
+44:14
+Push नहीं कर सकते क्या अपन update? Sorry? इनको हम 11 के लिए push नहीं कर सकते क्या?
+Rakesh Patel
+44:22
+11 के लिए, आह, 11 के लिए दादा push कर सकते हैं। आह, फिर problem वही है कि hardware compatibility अगर नहीं होगी, तो वो auto upgrade Windows 11 में नहीं होगी devices।
+Dadasaheb Misal
+44:36
+तो लगा तो दीजिए, वहाँ पे count कम हो जाएगा।हाँ, policy हम enforce कर सकते हैं, कर सकते हैं।
+Rakesh Patel
+44:46
+ठीक है, मैं इन 32 devices पे policy enforce कर दूँगा। Okay?
+Sudarshan Bhamare
+44:55
+आप enforce कर दो राकेश।
+Sachin Kumar
+44:58
+At least देखते हैं, count कम हो गया तो।ये सारे devices में एक साथ करें या एक-दो device, ये devices कौन सी हैं, पहले वो check कर लो। तो दो-चार devices में करो, कुछ hamper भी होगा तो बड़े level, मतलब large level पे नहीं होगा, large scale पे। तो device पहले identify कर लो कि कौन से दो-तीन devices में करेंगे।
+Rakesh Patel
+45:18
+ठीक है दादा, आप एक बार, आह, ये तो होने लोकेशन की, आप ये हैं कुछ devices, आप identify कर देना कि किसमें मुझे लगाना है। आप name share कर देना, मैं उसपे implement करूँगा पहले।
+Dadasaheb Misal
+45:29
+अभी, दादा, ये भी आप चेतन धुमाळ पे ले लो। चेतन धुमाळ करके।यदि अभी करना है तो आप बता दो उनको 5 मिनट।हाँ, हाँ, चेतन धुमाळ है ना उसमें, चेतन धुमाळ, उसमें लगा दो।
+Rakesh Patel
+45:39
+ठीक है। मैं इसको add कर ले रहा हूँ।और दूसरा?
+Dadasaheb Misal
+45:52
+दूसरा ले लो नीलेश का, सर।मैं देख रहा हूँ, हाँ।
+Rakesh Patel
+46:06
+ठीक है। एक और बताना, दादा, तीन पे करते हैं।
+Dadasaheb Misal
+46:12
+मैं लॉग करूँ? प्रवीण गवळी।
+Rakesh Patel
+46:23
+इसमें प्रवीण?
+Dadasaheb Misal
+46:24
+नीचे scroll down कीजिए।हम्म, हम्म।
+Rakesh Patel
+46:29
+ठीक है, मैं ये policy enforce करके आपको mail करता हूँ।
+Sachin Kumar
+46:40
+दादा साहब, और कोई point आपके? आपके हमने तीन point note किए हैं। एक है password issue वाला, एक है MDM issue। आशीष, इन दोनों पे work कर रहे हैं। ठीक है? वो, उन्होंने क्रिस के साथ एक meeting के लिए, आह—
+Dadasaheb Misal
+46:55
+मैं तो वही बोल रहा हूँ ना, अगर वो नहीं चल, password का वो नहीं चल रहा है ना, तो आप वो screen वाला option तो बंद कर दो, pop-up।कौन सा option? जो screen पे आता है, password change करने के लिए। अगर वो बंद हो गया तो फिर कुछ ना कुछ, कुछ solution निकल जाएगा, सबको समझ आ जाएगा कि भाई password reset करना है। देखिए, अभी जैसे राकेश जी बोलते हैं कि user को बताओ, सर, हमारे हाथ में रहता ना तो हम user को पकड़ के बताते, भैया तुझे करना है। एक तो user करता है project पे काम। कंपनी के user हैं भगवान, हम नहीं हैं। तो भगवान को हम छेड़ेंगे? कंपनी हमें छेड़ती है। बताओ, हम क्या करें?
+Sachin Kumar
+47:35
+अच्छा, यदि, आह, दादा साहब, यदि user अपने user profile, ये JumpCloud के, आह, user profile से password change करता है, उस case में भी वो valid होता है या नहीं होता है? उस case में भी वो MDM का issue आता है।
+Dadasaheb Misal
+47:51
+MDM में तो आप कैसे भी reset करो, कैसे भी change करो। आप, मतलब, एक तो password एक ही way से successfully change होता है। वो है, अपना, आह, वो जो link है, user console login वाले, उससे। आप user password जैसे ही change करो ना, तो वो MDM का issue आता ही आता है।अच्छा। और इन्होंने एक script, आह, राकेश, वो script जो आप लोगों ने बनाई थी, वो work नहीं कर रही क्या? वो कर रही है ना?
+Rakesh Patel
+48:18
+हाँ, वो work कर रही है, सर। लेकिन, आह, दादा साहब का कहना है कि उसको भी manual, मतलब, run करना ही पड़ेगा, admin portal से जाके तब user login कर पाएगा। मतलब एक बार admin को उसपे work करना ही पड़ेगा, user के device पे।
+Sachin Kumar
+48:33
+अच्छा। तो पूरा complete?
+Dadasaheb Misal
+48:36
+हाँ, manually है ना, क्योंकि अगर बेंगलुरु का बंदा password reset करता है, तो मुझे थोड़ी पता ना होगा ना, उसने आज password reset किया, और मैं अभी उस script run कर दूँ।
+Sachin Kumar
+48:43
+थोड़ा 5-10% ऊपर कर लो। इसमें ना, आशीष, एक बार आशीष को क्रिस के साथ connect कर लेते हैं, then कुछ ना कुछ workaround निकल, निकल आएगा इसपे। और जो भी workaround होगा, वो हमारा SOP हो जाएगा। ठीक है? चलेगा? चलेगा, दादा साहब। ये तीन point हम note कर लेंगे, अपने action points। और, आह, ये password issue, MDM issue, और software, आह, जो chocolate से download होता है।
+Sudarshan Bhamare
+49:14
+एक, एक जो restart का notification आता है ना, तो, आह, एक काम करो, अगर restart नहीं करता है user, समझो 5 दिन के बाद, hello? हम्म, हाँ।तो आप या तो evening में कर दो, 9 के बाद, Friday को, या फिर जो भी 5 दिन हैं, आह, या फिर रात में कर दो। नहीं, नहीं, सुदर्शन, वो नहीं होगा, क्योंकि user वैसे भी laptop चालू रहेगा, नहीं पता। एक काम कर दो, उसमें ऐसा option है क्या कि अगर वो right away नहीं करता है, तो उसमें कुछ 10-15 मिनट का उसको option दे सकता है क्या वो? राकेश?
+Dadasaheb Misal
+49:48
+Password, आह, ये device reset का तो हमने कितने दिन सेट कर रखा है? 5 दिन या 7 दिन?
+Rakesh Patel
+49:52
+Option हम, आह, जैसे, आह, इसका सेट कर रखा है, और तीसरे, चौथे, और पाँचवें दिन reminder जाएगी user के पास, और पाँचवें दिन जब, आह, मतलब, 5 day complete हो जाएगा, वो automatic reset होगा। हाँ, उसमें हम reminder बढ़ा सकते हैं, कि जैसे आज, हाँ, restart होगा, हम उसमें reminder, आह, create कर सकते हैं, कि 15 या 20 मिनट का उसको और time मिल जाए।
+Dadasaheb Misal
+50:16
+राकेश जी, वही करो, एक—अभी, अभी कितना time मिला हुआ है? नहीं, नहीं, उसमें खाली 5 मिनट का time मिल रहा है।5 मिनट का time? हाँ, तो उसको एक काम करो, उसको 1 घंटा, आधा घंटा, और 5 मिनट, ये तीनों का schedule कर दो। नहीं तो एक काम करो, आधा घंटा, 15 मिनट, 5 मिनट।
+Rakesh Patel
+50:32
+जैसे मान लो अभी 5 बजे expire होने वाला है, आह, मतलब complete होने वाला है 5 दिन, तो उसको 3 बजे भी आए, 4 बजे भी आए, 4:30 बजे आए, फिर 5 बजे restart हो जाए। ऐसा चाह रहे हो आप?
+Dadasaheb Misal
+50:46
+हाँ, वैसा ही चाह रहे हैं।
+Rakesh Patel
+50:48
+ठीक है, ठीक है, मैं देखता हूँ, ऐसा script create करता हूँ।
+Sachin Kumar
+50:52
+Time-time मत लाना, दादा, तू 1 घंटा का time। नहीं, नहीं, राकेश, इनका, मेरे हिसाब से इनका कहना ये है कि जैसे मेरा 5 बज गया, आह, device reset का time आ गया, आह, reboot का, तो मेरे पास pop-up आ जाता है ना, वहाँ पे option आ जाए कि, आह, restart this device after—Postpone, postpone।Postpone, हाँ।
+Rakesh Patel
+51:15
+और सर, postpone का native तो Windows support करता है। Windows के through ही हमें script बनानी पड़ेगी। बाकी JumpCloud, आह, जैसे अभी notification आती है central में, तो अभी तक तो वही आएगा। बाकी एक बार मैं cross-check करूँगा कि postpone का भी आए, अगर कर सकें तो।
+Sachin Kumar
+51:32
+नहीं, एक बार check कर लेना, यदि postpone का हो तो ठीक है, otherwise नहीं हो तो user के पास 3 notification आ जाएँ, 2 घंटे में होने वाला है, 30 मिनट में होगा, 15 मिनट में होगा, 1 घंटा, 30 मिनट, 15 मिनट।ठीक है।हाँ, ऐसा कुछ कर दो।और 5-5 मिनट का क्या, ऐसा रहता है ना, कोई 3rd gen की, मतलब ये—Call में वगैरह रहता है।हाँ, कुछ रहता है, और 5 मिनट में ही हो जाए तो थोड़ा सा रहता है।ठीक है।3-3 reminder आएँगे तो ठीक है। हमने 3 बार at least user को inform किया है। 2 घंटे पहले किया है, आधे घंटे पहले किया है, 15 मिनट पहले किया है। तो time frame दादा साहब, आप बता दो।ठीक है।कि कौन से 3 time frame रखने हैं, तो वही हम रख लेंगे।
+Dadasaheb Misal
+52:15
+वही, उसको वही करो। 1 घंटा, आधा घंटा, और 15 मिनट। और last में directly restart।
+Sachin Kumar
+52:20
+ठीक। ठीक है राकेश, ये भी note कर लो।ठीक है।Device reset restart का 5 days का 1 hour 30 minutes और 15 मिनट। ठीक है। ठीक है, और कोई pending points, सर?
+Sudarshan Bhamare
+52:44
+नहीं। I think it's a good update।ये करते हैं हर महीना।
+Sachin Kumar
+52:50
+हाँ, ये करते हैं हर महीने। Starting में थोड़ा effort ज्यादा लगेगा, क्योंकि starting में काफी चीजें उलझी हुई हैं। ठीक है? तो at least एक हम track पे आ जाएँगे, then। पैसा नहीं देने का। और हमें, मतलब, at least जब हम discussion भी करेंगे ना, इसमें ये है, इसमें ये नहीं है, check करना है, cross-check करना है। और ये जो exceptions की sheet भी है, जो हमने अभी prepare करके आपके साथ present की है, तो एक तो हमारे next meeting तक हमारा NH360 भी final हो जाएगा, तो उसके through भी देख सकते हैं। और otherwise, meeting में आने से 2 दिन पहले आपके पास ये exception sheet चली जाएगी।ठीक।कोशिश करेंगे कि आप लोग भी उसपे थोड़ा सा work करके ना, क्योंकि जब हम call पे आएँ, तो कुछ remarks हमारे पास हों।
+Dadasaheb Misal
+53:35
+बिल्कुल। राकेश जी, एक-एक check करना है कि home screen का password change का option बंद कर सकते हैं क्या?
+Rakesh Patel
+53:45
+ठीक है सर, मैं check करूँगा।मतलब वो home screen पे जो left side में application का pop-up आता है, "Your password going to expire"?
+Dadasaheb Misal
+53:52
+नहीं, नहीं, नहीं, वो नहीं। जैसे कि अभी मेरा password expire हो गया, मैंने laptop चालू किया, मैंने password डाला, तो वो बोलता है कि आपका password expire है, change करो।हाँ, तो उधर सीधा notification आना चाहिए, "Your password was expired"। वो change का option ही नहीं आना चाहिए Windows पे, login पे।
+Rakesh Patel
+54:09
+अच्छा, home lock screen पे password का option ही नहीं आना चाहिए।
+Dadasaheb Misal
+54:12
+हाँ, क्योंकि ज्यादातर issue उसकी वजह से होता है कि भाई ये तुम्हारा option है, नहीं चलता, हमारी क्या गलती है, project delay हुआ, ये delay हुआ। फिर user क्या है ना, उसको 2 घंटा चाहिए कुछ घूमने के लिए, तो हमारे नाम-नाम मत्थे थोप के भाग जाता है।
+Rakesh Patel
+54:27
+ओके। हाँ, अगर option है। ठीक है सर, मैं इसपे check कर लूँगा एक बार।
+Sachin Kumar
+54:32
+और, और मैं तो ये suggest करूँगा, सुदर्शन जी और दादा साहब, हम ना, मतलब, next monthly meeting से पहले एक बार next week connect कर लेते हैं। क्योंकि जितने भी हमारे pending या open points हैं ना, वो एक बार clear करते हैं।
+Dadasaheb Misal
+54:45
+हाँ, हाँ, चलेगा ना।हम्म?
+Sachin Kumar
+54:47
+चलेगा।ठीक है।ठीक है ना? फिर हम monthly करेंगे। क्योंकि अभी कुछ points हमारे ज्यादा open हैं। तो at least यदि, आह, next meeting set करेंगे by the next week, then points close भी कर लेंगे। और next week में हम, आह, GSKL की policies वगैरह भी work कर लेंगे, जो हमने whitelist और URL whitelist वगैरह कर रखा है। तो। कितने में, आह, वसुधा नहीं है क्या call पे, इस call पे?
+Kirti Upadhaya
+55:16
+आह, सचिन, all of a sudden एक urgent call आ गई थी, उसको वहाँ पे जाना पड़ गया था।
+Sachin Kumar
+55:20
+ठीक, ठीक, ठीक। तो, आह, तो सुदर्शन जी, next week हम, आह, Wednesday को schedule करें? एक already schedule है क्या अपना? एक अपना already scheduled है।हाँ, कब-कब schedule है?
+Sudarshan Bhamare
+55:39
+कल की 3 बजे की call है अपना।
+Sachin Kumar
+55:42
+नहीं, नहीं, कल 3 बजे ना, actually कीर्ति मैम ने गलत से आपको involve कर लिया होगा, वो किसी दूसरे customer के साथ हैं।अच्छा। ठीक है, 4 बजे कर सकते हैं कल।कल नहीं, आह, कल का नहीं रखते, हम रखते हैं next month, Tuesday का रखते हैं। In the meanwhile, कुछ काम भी हो जाएगा अपना।ठीक है, ठीक है, makes sense।ठीक है। राकेश, please अभी touch with दादा साहब, और दादा साहब, ये आपके पास sheet आधी आ जाएगी, ठीक है ना? तो जो भी remarks होंगे, आप वो डाल के, इसको हम close रखते हैं, जो भी critical points हैं। फिर हम next week Tuesday को connect करते हैं, और इन सारे points को address करेंगे, जहाँ पे जो remarks होगा, वो remarks update कर देंगे। Okay?
+Sachin Kumar
+56:22
+फिर, मतलब, by the month of July, आह, end of the July, हम work कर लेते हैं कि जो भी security exceptions हैं, वो well noted हैं, वो हमें पता है कि क्यों exceptions हैं, वो क्यों हैं। फिर हम management को भी summary दे सकते हैं कि सर, these are the exceptions in the security tools which we have implemented, और वैसा करके। ठीक है? तो management भी well known होगी ना? Otherwise, अभी किसी को पूछने जाएंगे, तो बोलेंगे कि हमने तो सारे tools लगा रखे हैं, we are well secured।
+Sudarshan Bhamare
+56:58
+करेक्ट। ठीक है, ठीक है, चलेगा।
+Sachin Kumar
+57:00
+ठीक है। ठीक है।ओके।ठीक है। राकेश, ये आपको शाम तक ये share कर देंगे, MOM and these two sheets also।हम्म, हम्म।
+Sudarshan Bhamare
+57:10
+ठीक है राकेश?
+Rakesh Patel
+57:14
+
+ठीक है सर।ठीक है।
+Sachin Kumar
+57:16
+ओके, thank you team।Thank you।Thank you।Thank you team. Bye-bye।Thank you।
+Sync with audio

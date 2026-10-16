@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Transparent background — infinity mark only, same path as NxgLogo.jsx -->
+  <g transform="translate(32,32) scale(0.55) translate(-50,-19)">
+    <path
+      d="M50,19 C50,9 43,4 32,4 C21,4 8,9 8,19 C8,29 21,34 32,34 C43,34 50,29 50,19 C50,9 57,4 68,4 C79,4 92,9 92,19 C92,29 79,34 68,34 C57,34 50,29 50,19"
+      stroke="#1A1814"
+      stroke-width="10"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+  </g>
+</svg>

@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-cyber-darker text-slate-50 font-sans antialiased;
+    background-image:
+      radial-gradient(at 0% 0%,   rgba(184, 135, 42, 0.06) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(184, 135, 42, 0.04) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans tracking-tight;
+  }
+}
+
+/* Warm Scrollbar */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background-color: #F5F1E8; }
+::-webkit-scrollbar-thumb  { background-color: #C4BEB0; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background-color: #B8872A; }
+
+/* Warm card / glassmorphism */
+.glass-panel {
+  background-color: rgba(253, 250, 245, 0.96);
+  backdrop-filter: blur(8px);
+  border: 1px solid #D8D2C4;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 12px rgba(139, 120, 100, 0.12), 0 1px 3px rgba(139, 120, 100, 0.08);
+}
+
+.glass-panel-hover {
+  @apply hover:border-slate-600 transition-all duration-300;
+}
+
+/* Amber glow utilities */
+.cyber-glow {
+  box-shadow: 0 0 15px rgba(184, 135, 42, 0.25);
+}
+
+.cyber-glow-success {
+  box-shadow: 0 0 15px rgba(22, 163, 74, 0.2);
+}
+
+.text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-amber-600 via-amber-500 to-amber-700;
+}
+
+/* Warm theme: override CSS-white text to warm dark for light backgrounds.
+   Uses body prefix for higher specificity over @layer utilities. */
+body .text-white { color: #1A1814; }
+
+/* Custom Checkbox */
+.cyber-checkbox {
+  @apply rounded border-slate-700 bg-slate-900 text-indigo-500 focus:ring-indigo-400/40 focus:ring-offset-0;
+}
+
+/* Micro-animations */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.95; }
+  50%       { opacity: 0.6; }
+}
+
+.pulse-indicator {
+  animation: pulse-soft 2s infinite ease-in-out;
+}
+
+@keyframes slide-in-bottom {
+  0%   { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0);    opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slide-in-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media print {
+  aside, nav, [data-sidebar], .print\:hidden {
+    display: none !important;
+  }
+  main {
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+  }
+  body, #root {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .max-w-4xl {
+    max-width: 100% !important;
+  }
+}

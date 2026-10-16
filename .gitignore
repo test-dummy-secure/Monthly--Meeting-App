@@ -1,0 +1,35 @@
+# ── Environment / Secrets ────────────────────────────────────
+.env
+.env.production
+.env.local
+.env.*.local
+# Keep the example template committed
+!.env.production.example
+
+# ── Dependencies ─────────────────────────────────────────────
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# ── Build outputs ────────────────────────────────────────────
+frontend/dist/
+backend/dist/
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+logs/
+backend/logs/
+
+# ── OS / Editor ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+*.swp
+*.swo
+
+# ── Docker volumes (local dev data) ─────────────────────────
+postgres_data/
+redis_data/
+
+# ── Local reference docs (downloaded artifacts, not source) ──
+docs/platform-reference/

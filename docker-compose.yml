@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # ── Database ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: bmmj-postgres
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_DB:       ${DB_NAME:-BMMJ}
+      POSTGRES_USER:     ${DB_USER:-bmmj_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:     ["CMD-SHELL", "pg_isready -U ${DB_USER:-bmmj_user}"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ── Cache / Queue store ─────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: bmmj-redis
+    restart: unless-stopped
+    # requirepass enforces AUTH on every connection — set REDIS_PASSWORD in .env.production
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --maxmemory 400mb
+      --maxmemory-policy noeviction
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:     ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ── Backend Node REST API ────────────────────────────────────────────────────
+  backend:
+    build:
+      context:    ./backend
+      dockerfile: Dockerfile
+    container_name: bmmj-backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5000:5000"
+    env_file: .env.production
+    environment:
+      # Non-secret service discovery — overrides any env_file values for these
+      PORT:           5000
+      NODE_ENV:       production
+      DB_HOST:        postgres
+      DB_PORT:        5432
+      REDIS_HOST:     redis
+      REDIS_PORT:     6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    # Allows the backend container to reach Ollama running on the host server.
+    # Without this, http://localhost:11434 inside the container resolves to the
+    # container itself (not the host), and all AI transcript processing fails.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:         ["CMD-SHELL", "curl -sf http://localhost:5000/health || exit 1"]
+      interval:     15s
+      timeout:      5s
+      retries:      3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ── Frontend Nginx ───────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context:    ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the JS bundle at build time. Set VITE_API_URL in GitHub
+        # Secrets (e.g. https://yourdomain.com/api) before first deployment.
+        VITE_API_URL: ${VITE_API_URL}
+    container_name: bmmj-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+volumes:
+  postgres_data:
+  redis_data:

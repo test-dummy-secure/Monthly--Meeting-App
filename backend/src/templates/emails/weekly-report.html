@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>Weekly Security Report — {{tenantName}}</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f1f5f9; }
+    table { border-spacing: 0; }
+    td { padding: 0; }
+    @media only screen and (max-width: 620px) {
+      .email-card { width: 100% !important; }
+      .email-body { padding: 24px 16px !important; }
+      .stat-cell { display: block !important; width: 100% !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color:#f1f5f9;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+
+        <table class="email-card" width="600" cellpadding="0" cellspacing="0" border="0" role="presentation"
+               style="max-width:600px;width:100%;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+          <!-- ── HEADER ─────────────────────────────────────────────────── -->
+          <tr>
+            <td style="background-color:#1A1814;padding:28px 36px;border-radius:10px 10px 0 0;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+                <tr>
+                  <td>
+                    <p style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">NxgSecure</p>
+                    <p style="margin:6px 0 0;color:#64748b;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Security Review Management</p>
+                  </td>
+                  <td align="right" valign="middle">
+                    <span style="display:inline-block;background-color:#065f46;color:#a7f3d0;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;letter-spacing:0.8px;text-transform:uppercase;">
+                      &#128202; Weekly Report
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ── GREEN ACCENT BAR ───────────────────────────────────────── -->
+          <tr>
+            <td style="background-color:#10b981;height:4px;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
+          <!-- ── BODY ──────────────────────────────────────────────────── -->
+          <tr>
+            <td class="email-body" style="background-color:#ffffff;padding:36px;">
+
+              <p style="margin:0 0 6px;color:#64748b;font-size:14px;">Hello <strong style="color:#1e293b;">{{recipientName}}</strong>,</p>
+              <p style="margin:0 0 28px;color:#334155;font-size:15px;line-height:1.7;">
+                Your weekly security review report for <strong>{{tenantName}}</strong> has been generated. Here is a summary of the period <strong>{{weekStart}}</strong> to <strong>{{weekEnd}}</strong>.
+              </p>
+
+              <!-- Stats grid -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom:28px;">
+                <tr>
+                  <!-- Carry-forward stat -->
+                  <td class="stat-cell" width="33%" style="padding:0 6px 0 0;vertical-align:top;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"
+                           style="background-color:#fffbeb;border:1px solid #fde68a;border-radius:8px;">
+                      <tr>
+                        <td style="padding:20px 16px;text-align:center;">
+                          <p style="margin:0 0 4px;font-size:32px;font-weight:700;color:#b45309;line-height:1;">{{carryForwardTotal}}</p>
+                          <p style="margin:0;color:#92400e;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Carry-Forward</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+
+                  <!-- Escalated stat -->
+                  <td class="stat-cell" width="33%" style="padding:0 3px;vertical-align:top;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"
+                           style="background-color:#fef2f2;border:1px solid #fecaca;border-radius:8px;">
+                      <tr>
+                        <td style="padding:20px 16px;text-align:center;">
+                          <p style="margin:0 0 4px;font-size:32px;font-weight:700;color:#dc2626;line-height:1;">{{escalatedTotal}}</p>
+                          <p style="margin:0;color:#991b1b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Escalated</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+
+                  <!-- Overdue stat -->
+                  <td class="stat-cell" width="33%" style="padding:0 0 0 6px;vertical-align:top;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"
+                           style="background-color:#fff1f2;border:1px solid #fda4af;border-radius:8px;">
+                      <tr>
+                        <td style="padding:20px 16px;text-align:center;">
+                          <p style="margin:0 0 4px;font-size:32px;font-weight:700;color:#be123c;line-height:1;">{{overdueTotal}}</p>
+                          <p style="margin:0;color:#9f1239;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Overdue</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- What these mean -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation"
+                     style="background-color:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 8px;color:#166534;font-size:13px;font-weight:700;">What do these numbers mean?</p>
+                    <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom:6px;">
+                      <tr>
+                        <td style="width:14px;color:#16a34a;font-size:13px;line-height:1.6;">&#8226;</td>
+                        <td style="padding-left:6px;color:#166534;font-size:13px;line-height:1.6;"><strong>Carry-Forward:</strong> Tasks moved to the next meeting without completion.</td>
+                      </tr>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom:6px;">
+                      <tr>
+                        <td style="width:14px;color:#16a34a;font-size:13px;line-height:1.6;">&#8226;</td>
+                        <td style="padding-left:6px;color:#166534;font-size:13px;line-height:1.6;"><strong>Escalated:</strong> Tasks automatically escalated due to repeated carry-forwards.</td>
+                      </tr>
+                    </table>
+                    <table cellpadding="0" cellspacing="0" border="0" role="presentation">
+                      <tr>
+                        <td style="width:14px;color:#16a34a;font-size:13px;line-height:1.6;">&#8226;</td>
+                        <td style="padding-left:6px;color:#166534;font-size:13px;line-height:1.6;"><strong>Overdue:</strong> Tasks past their due date that have not been resolved.</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 8px;color:#64748b;font-size:13px;line-height:1.6;">
+                Report generated on <strong style="color:#334155;">{{reportDate}}</strong>. Log in to the NxgSecure to view the full report, drill into individual tasks, and take action.
+              </p>
+              <p style="margin:0;color:#94a3b8;font-size:13px;line-height:1.6;">Do not reply to this automated email.</p>
+
+            </td>
+          </tr>
+
+          <!-- ── FOOTER ─────────────────────────────────────────────────── -->
+          <tr>
+            <td style="background-color:#f8fafc;padding:20px 36px;border-top:1px solid #e2e8f0;border-radius:0 0 10px 10px;text-align:center;">
+              <p style="margin:0 0 4px;color:#94a3b8;font-size:12px;">
+                Automated weekly report from <strong style="color:#64748b;">NxgSecure</strong>.
+              </p>
+              <p style="margin:0;color:#cbd5e1;font-size:11px;">&#169; 2026 NxgSecure &mdash; NxgSecure. All rights reserved.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
