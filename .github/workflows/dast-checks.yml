@@ -1,9 +1,9 @@
 name: DAST Security Scan (OWASP ZAP)
 
 on:
-  pull_request:                 # triggers on every proposed code change targeting main
+  pull_request:
     branches: [ main ]
-  workflow_dispatch:            # manual testing button from Actions tab
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,10 +16,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Create temporary environment files so docker-compose doesn't fail on missing .env files
+      # 1. Create environment files with a production-style URL format to pass Vite's build validation
       - name: Create Environment Files
         run: |
-          echo "VITE_API_URL=http://localhost:5000" >> .env
+          echo "VITE_API_URL=https://api.test.local" >> .env
           echo "DB_PASSWORD=testpassword" >> .env
           echo "REDIS_PASSWORD=testpassword" >> .env
           echo "POSTGRES_DB=testdb" >> .env
@@ -49,7 +49,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: 'http://localhost:5000'
-          fail_action: false # Set to true later when you want to block PRs on high findings
+          fail_action: false
           report_format: json
           output_file: 'zap-report.json'
 
@@ -61,7 +61,7 @@ jobs:
           name: zap-report-${{ github.run_id }}
           path: zap-report.json
 
-      # 6. Reimport scan results to your central platform (DefectDojo/NXG Secure)
+      # 6. Reimport scan results to your central platform
       - name: Upload scan to Security Platform
         if: always()
         shell: bash
