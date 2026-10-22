@@ -81,12 +81,42 @@ jobs:
       - name: Ensure workspace is writable by ZAP container
         run: chmod -R 777 "$GITHUB_WORKSPACE"
 
-      # 6. Run OWASP ZAP Baseline Scan
+      # 6. Log in and generate ZAP's auth config, so the scan covers real
+      # protected endpoints (meetings, tasks, etc.), not just /health and
+      # /api/docs. No new secrets needed - this logs in for real using the
+      # SUPER_ADMIN_EMAIL/PASSWORD already generated above (the backend
+      # auto-bootstraps that exact account on startup), and injects the
+      # freshly-issued token via ZAP's Replacer add-on. A pre-stored static
+      # token would NOT work here - this app's JWTs expire in 15 minutes
+      # (config/index.js jwtExpiresIn), so it would already be dead by scan
+      # time; logging in fresh every run avoids that entirely.
+      # zap-auth.conf is never committed - generated fresh each run, and
+      # listed in .gitignore as a backup safety net regardless.
+      - name: Authenticate and Generate ZAP Auth Config
+        run: |
+          TOKEN=$(curl -sf -X POST http://localhost:5000/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"admin@test.local","password":"TestAdmin2026Secure"}' \
+            | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])")
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::Could not obtain an access token - scan will run unauthenticated"
+          fi
+          cat << EOF > zap-auth.conf
+          replacer.full_list(0).description=AuthHeader
+          replacer.full_list(0).enabled=true
+          replacer.full_list(0).matchtype=REQ_HEADER
+          replacer.full_list(0).matchstr=Authorization
+          replacer.full_list(0).regex=false
+          replacer.full_list(0).replacement=Bearer $TOKEN
+          EOF
+
+      # 7. Run OWASP ZAP Baseline Scan
       # report_format/output_file were never real inputs for this action -
       # they were silently ignored, which is why zap-report.xml never existed
       # downstream. The real way to control the output report is cmd_options
       # (passed straight to the underlying zap-baseline.py script: -x for
-      # XML). artifact_name overrides the action's own default internal
+      # XML, -z to pass the auth config through to the underlying ZAP
+      # process). artifact_name overrides the action's own default internal
       # artifact upload (its unnamed default, "zap_scan", was being rejected
       # by the artifact API) - giving it a unique name here also means we
       # don't need a separate, redundant upload-artifact step afterward.
@@ -95,10 +125,10 @@ jobs:
         with:
           target: 'http://localhost:5000'
           fail_action: false
-          cmd_options: '-x zap-report.xml'
+          cmd_options: '-x zap-report.xml -z "-configfile zap-auth.conf"'
           artifact_name: 'zap-report-${{ github.run_id }}'
 
-      # 7. Upload scan to Security Platform (NXG Secure / DefectDojo)
+      # 8. Upload scan to Security Platform (NXG Secure / DefectDojo)
       - name: Upload scan to Security Platform
         if: always()
         shell: bash
@@ -113,7 +143,7 @@ jobs:
             -F scan_type="ZAP Scan" \
             -F file=@zap-report.xml
 
-      # 8. Clean up containers
+      # 9. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down

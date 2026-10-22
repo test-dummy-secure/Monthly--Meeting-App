@@ -5,6 +5,11 @@
 .env.*.local
 # Keep the example template committed
 !.env.production.example
+# Generated fresh per CI run (backend/.github/workflows/dast-checks.yml) -
+# carries a live JWT, never meant to be committed. Backup safety net only,
+# the workflow never stages or commits it either.
+zap-auth.conf
+zap-report.xml
 
 # ── Dependencies ─────────────────────────────────────────────
 node_modules/
