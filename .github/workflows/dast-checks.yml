@@ -7,6 +7,10 @@ on:
 
 permissions:
   contents: read
+  # zaproxy/action-baseline opens a GitHub Issue per alert found when the scan
+  # report is non-empty - without this it fails with "Resource not accessible
+  # by integration" the moment any alert exists.
+  issues: write
 
 jobs:
   dast:
@@ -26,6 +30,18 @@ jobs:
           echo "REDIS_PASSWORD=testpassword" >> .env
           echo "JWT_ACCESS_SECRET=test-super-secret-access-token-key-12345" >> .env
           echo "JWT_REFRESH_SECRET=test-super-secret-refresh-token-key-12345" >> .env
+          # config/validate.js hard-fails in production unless these are also
+          # set to non-default values - without them the backend crash-loops
+          # at boot before ever reaching a DB connection or the healthcheck.
+          echo "NXG360_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
+          echo "TOKEN_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
+          echo "CLIENT_URL=https://app.test.local" >> .env
+          echo "SMTP_USER=test@test.local" >> .env
+          echo "SMTP_PASS=testsmtppass" >> .env
+          echo "SMTP_FROM=NxgSecure Test <test@test.local>" >> .env
+          echo "MS_CLIENT_ID=00000000-0000-0000-0000-000000000000" >> .env
+          echo "SUPER_ADMIN_EMAIL=admin@test.local" >> .env
+          echo "SUPER_ADMIN_PASSWORD=TestAdmin2026Secure" >> .env
           cp .env .env.production
 
       # 2. Start Application Stack via Docker Compose
