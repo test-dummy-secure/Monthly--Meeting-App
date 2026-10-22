@@ -22,8 +22,14 @@ jobs:
           echo "VITE_API_URL=https://api.test.local" >> .env
           echo "DB_PASSWORD=testpassword" >> .env
           echo "REDIS_PASSWORD=testpassword" >> .env
-          echo "POSTGRES_DB=testdb" >> .env
-          echo "POSTGRES_USER=testuser" >> .env
+          # DB_NAME/DB_USER (not POSTGRES_DB/POSTGRES_USER) - these are the exact
+          # names docker-compose.yml's ${DB_NAME:-BMMJ}/${DB_USER:-bmmj_user}
+          # substitution and the backend's own config/index.js defaults both read.
+          # The old POSTGRES_DB/POSTGRES_USER names matched neither, so Postgres
+          # was provisioned with one set of credentials while the backend tried
+          # to connect with a different, mismatched set.
+          echo "DB_NAME=testdb" >> .env
+          echo "DB_USER=testuser" >> .env
           cp .env .env.production
 
       # 2. Start Application Stack via Docker Compose
