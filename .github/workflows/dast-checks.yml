@@ -11,6 +11,13 @@ permissions:
   # report is non-empty - without this it fails with "Resource not accessible
   # by integration" the moment any alert exists.
   issues: write
+  # Any explicit permissions: block silently drops every unlisted permission
+  # to 'none' instead of leaving it at the repo default - actions: write
+  # wasn't listed, so artifact creation itself had no permission to work at
+  # all. This is why it failed identically on two completely different
+  # artifact names ("zap_scan", then our own run-id-based name) - it was
+  # never actually about the name string.
+  actions: write
 
 jobs:
   dast:
