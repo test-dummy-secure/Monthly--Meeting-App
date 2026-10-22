@@ -74,23 +74,23 @@ jobs:
           docker compose logs postgres
 
       # 5. Run OWASP ZAP Baseline Scan
+      # report_format/output_file were never real inputs for this action -
+      # they were silently ignored, which is why zap-report.xml never existed
+      # downstream. The real way to control the output report is cmd_options
+      # (passed straight to the underlying zap-baseline.py script: -x for
+      # XML). artifact_name overrides the action's own default internal
+      # artifact upload (its unnamed default, "zap_scan", was being rejected
+      # by the artifact API) - giving it a unique name here also means we
+      # don't need a separate, redundant upload-artifact step afterward.
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: 'http://localhost:5000'
           fail_action: false
-          report_format: xml
-          output_file: 'zap-report.xml'
+          cmd_options: '-x zap-report.xml'
+          artifact_name: 'zap-report-${{ github.run_id }}'
 
-      # 6. Keep the report as a downloadable artifact
-      - name: Keep the report (downloadable for 90 days)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: zap-report-${{ github.run_id }}
-          path: zap-report.xml
-
-      # 7. Upload scan to Security Platform (NXG Secure / DefectDojo)
+      # 6. Upload scan to Security Platform (NXG Secure / DefectDojo)
       - name: Upload scan to Security Platform
         if: always()
         shell: bash
@@ -105,7 +105,7 @@ jobs:
             -F scan_type="ZAP Scan" \
             -F file=@zap-report.xml
 
-      # 8. Clean up containers
+      # 7. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down
