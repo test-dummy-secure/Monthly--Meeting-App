@@ -1,0 +1,70 @@
+name: DAST Security Scan (OWASP ZAP)
+
+on:
+  pull_request:                 # triggers on every proposed code change
+  workflow_dispatch:            # manual testing button
+
+permissions:
+  contents: read
+
+jobs:
+  dast:
+    name: DAST (Dynamic Web App Check)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 1. Spin up your multi-container stack locally so ZAP has a target
+      - name: Start Application Stack via Docker Compose
+        run: docker compose up -d
+
+      # 2. Wait for the backend health check to pass
+      - name: Wait for Backend Health Check
+        run: |
+          echo "Waiting for backend to respond..."
+          for i in {1..30}; do
+            if curl -sf http://localhost:5000/health; then
+              echo "Backend is up!"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Backend failed to start in time"
+          exit 1
+
+      # 3. Run OWASP ZAP Baseline Scan against your local running container
+      - name: Run OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'http://localhost:5000'
+          fail_action: false # Set to true later when you want to block PRs on high findings
+          report_format: json
+          output_file: 'zap-report.json'
+
+      # 4. Keep the report as an artifact (just like your sast/sca checks)
+      - name: Keep the report (downloadable for 90 days)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-${{ github.run_id }}
+          path: zap-report.json
+
+      # 5. Optional: Reimport scan results to your central platform if desired
+      - name: Upload scan to Security Platform
+        if: always()
+        shell: bash
+        run: |
+          curl -sf -X POST "https://nxg.app.nxgsecure.com/api/v2/reimport-scan/" \
+            -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
+            -F auto_create_context=true \
+            -F product_type_name="${{ github.repository_owner }}" \
+            -F product_name="${{ github.event.repository.name }}" \
+            -F engagement_name="DAST" \
+            -F scan_type="ZAP Scan" \
+            -F file=@zap-report.json || true
+
+      # 6. Clean up containers
+      - name: Clean Up Stack
+        if: always()
+        run: docker compose down
