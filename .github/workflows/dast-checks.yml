@@ -73,7 +73,15 @@ jobs:
           echo "=== DATABASE LOGS ==="
           docker compose logs postgres
 
-      # 5. Run OWASP ZAP Baseline Scan
+      # 5. Ensure the workspace is writable by the ZAP container
+      # zaproxy/action-baseline runs ZAP as a different container UID than the
+      # one that checked out the workspace - without this, it fails to write
+      # its own report with "AccessDeniedException /zap/wrk/<file>". Safe here:
+      # this is an ephemeral CI runner, destroyed right after the job.
+      - name: Ensure workspace is writable by ZAP container
+        run: chmod -R 777 "$GITHUB_WORKSPACE"
+
+      # 6. Run OWASP ZAP Baseline Scan
       # report_format/output_file were never real inputs for this action -
       # they were silently ignored, which is why zap-report.xml never existed
       # downstream. The real way to control the output report is cmd_options
@@ -90,7 +98,7 @@ jobs:
           cmd_options: '-x zap-report.xml'
           artifact_name: 'zap-report-${{ github.run_id }}'
 
-      # 6. Upload scan to Security Platform (NXG Secure / DefectDojo)
+      # 7. Upload scan to Security Platform (NXG Secure / DefectDojo)
       - name: Upload scan to Security Platform
         if: always()
         shell: bash
@@ -105,7 +113,7 @@ jobs:
             -F scan_type="ZAP Scan" \
             -F file=@zap-report.xml
 
-      # 7. Clean up containers
+      # 8. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down
