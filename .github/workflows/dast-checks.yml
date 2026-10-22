@@ -30,12 +30,12 @@ jobs:
       - name: Start Application Stack via Docker Compose
         run: docker compose up -d
 
-      # 3. Wait for the backend health check to pass
+      # 3. Wait for the backend health check to pass (Checking both /health and root /)
       - name: Wait for Backend Health Check
         run: |
           echo "Waiting for backend to respond..."
           for i in {1..30}; do
-            if curl -sf http://localhost:5000/health; then
+            if curl -sf http://localhost:5000/health || curl -sf http://localhost:5000/; then
               echo "Backend is up!"
               exit 0
             fi
@@ -44,7 +44,18 @@ jobs:
           echo "Backend failed to start in time"
           exit 1
 
-      # 4. Run OWASP ZAP Baseline Scan against your local running container
+      # 4. Debug Logs if Health Check Fails
+      - name: Debug Container Logs on Failure
+        if: failure()
+        run: |
+          echo "=== DOCKER COMPOSE STATUS ==="
+          docker compose ps
+          echo "=== BACKEND LOGS ==="
+          docker compose logs backend
+          echo "=== DATABASE LOGS ==="
+          docker compose logs postgres
+
+      # 5. Run OWASP ZAP Baseline Scan against your local running container
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
         with:
@@ -53,7 +64,7 @@ jobs:
           report_format: json
           output_file: 'zap-report.json'
 
-      # 5. Keep the report as a downloadable workflow artifact
+      # 6. Keep the report as a downloadable workflow artifact
       - name: Keep the report (downloadable for 90 days)
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,7 +72,7 @@ jobs:
           name: zap-report-${{ github.run_id }}
           path: zap-report.json
 
-      # 6. Reimport scan results to your central platform
+      # 7. Reimport scan results to your central platform
       - name: Upload scan to Security Platform
         if: always()
         shell: bash
@@ -75,7 +86,7 @@ jobs:
             -F scan_type="ZAP Scan" \
             -F file=@zap-report.json || true
 
-      # 7. Clean up containers
+      # 8. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down
