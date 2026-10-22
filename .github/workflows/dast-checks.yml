@@ -134,7 +134,11 @@ jobs:
         with:
           target: 'http://localhost:5000'
           fail_action: false
-          cmd_options: '-x zap-report.xml -z "-configfile zap-auth.conf"'
+          # -configfile needs the absolute in-container path - the workspace
+          # mounts at /zap/wrk/, but ZAP's own CLI resolves a bare relative
+          # filename against its own default cwd (/zap/), not the mount -
+          # confirmed directly from a real run: "No such file: /zap/zap-auth.conf"
+          cmd_options: '-x zap-report.xml -z "-configfile /zap/wrk/zap-auth.conf"'
           artifact_name: 'zap-report-${{ github.run_id }}'
 
       # 8. Upload scan to Security Platform (NXG Secure / DefectDojo)
