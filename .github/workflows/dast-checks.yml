@@ -168,12 +168,43 @@ jobs:
           path: zap-report.xml
           if-no-files-found: warn
 
-      # 9. Upload scan to Security Platform (NXG Secure / DefectDojo)
-      - name: Upload scan to Security Platform
+      # 9. Run OWASP ZAP API Scan, driven by the real OpenAPI spec
+      # The baseline scan above only ever found 3 URLs (/, /robots.txt,
+      # /sitemap.xml) - confirmed directly in the NXG portal (Host:
+      # localhost, exactly those 3 endpoints, nothing else). That's not a
+      # bug in the auth setup (confirmed working) - it's a structural limit:
+      # ZAP's spider discovers URLs by following HTML hyperlinks, and this
+      # backend is a pure JSON API with none to follow, authenticated or
+      # not. zaproxy/action-api-scan is the purpose-built alternative for
+      # exactly this case - it reads the real spec this app already serves
+      # at /api/docs.json and tests each documented route directly, with no
+      # dependency on link discovery. New ground, not yet run live - same
+      # continue-on-error precaution as the baseline step above, so a
+      # problem here can't block the rest of the job while it's unverified.
+      - name: Run OWASP ZAP API Scan (OpenAPI)
+        continue-on-error: true
+        uses: zaproxy/action-api-scan@v0.9.0
+        with:
+          target: 'http://localhost:5000/api/docs.json'
+          format: openapi
+          fail_action: false
+          cmd_options: '-x api-scan-report.xml -z "-configfile /zap/wrk/zap-auth.conf"'
+
+      # 10. Keep the API scan report as a downloadable artifact
+      - name: Keep the API scan report (downloadable for 90 days)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-scan-report-${{ github.run_id }}
+          path: api-scan-report.xml
+          if-no-files-found: warn
+
+      # 11. Upload scans to Security Platform (NXG Secure / DefectDojo)
+      - name: Upload scans to Security Platform
         if: always()
         shell: bash
         run: |
-          echo "Uploading ZAP scan report to NXG Portal..."
+          echo "Uploading ZAP baseline scan report to NXG Portal..."
           curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
             -F auto_create_context=true \
@@ -183,7 +214,21 @@ jobs:
             -F scan_type="ZAP Scan" \
             -F file=@zap-report.xml
 
-      # 10. Clean up containers
+          if [ -s api-scan-report.xml ]; then
+            echo "Uploading ZAP API scan report to NXG Portal..."
+            curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
+              -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
+              -F auto_create_context=true \
+              -F product_type_name="${{ github.repository_owner }}" \
+              -F product_name="${{ github.event.repository.name }}" \
+              -F engagement_name="DAST" \
+              -F scan_type="ZAP Scan" \
+              -F file=@api-scan-report.xml
+          else
+            echo "No API scan report found - skipping that upload"
+          fi
+
+      # 12. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down
