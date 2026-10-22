@@ -79,6 +79,15 @@ app.use(helmet({          // 2. Secure response headers
     },
   },
 }));
+// Prevent any response from being cached by browsers or intermediate proxies —
+// this is an API backend with no public cacheable assets; every response can
+// carry dynamic or authenticated data. Fixes ZAP's "Storable and Cacheable
+// Content" [10049] finding, seen on unauthenticated routes like /health and
+// /api/docs that a DAST spider can reach without a session.
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 app.use(compression());   // 3. Gzip
 app.use(cors({            // 4. CORS allowlist
   origin: (origin, cb) => {

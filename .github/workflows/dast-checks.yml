@@ -7,6 +7,10 @@ on:
 
 permissions:
   contents: read
+  # zaproxy/action-baseline opens a GitHub Issue per alert found when the scan
+  # report is non-empty - without this it fails with "Resource not accessible
+  # by integration" the moment any alert exists.
+  issues: write
 
 jobs:
   dast:
