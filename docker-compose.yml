@@ -70,8 +70,6 @@ services:
       REDIS_PORT:     6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     # Allows the backend container to reach Ollama running on the host server.
-    # Without this, http://localhost:11434 inside the container resolves to the
-    # container itself (not the host), and all AI transcript processing fails.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -104,7 +102,8 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     deploy:
       resources:
         limits:
