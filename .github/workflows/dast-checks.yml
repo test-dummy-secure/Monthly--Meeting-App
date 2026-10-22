@@ -132,14 +132,21 @@ jobs:
       # downstream. The real way to control the output report is cmd_options
       # (passed straight to the underlying zap-baseline.py script: -x for
       # XML, -z to pass the auth config through to the underlying ZAP
-      # process). artifact_name deliberately NOT set: the action's own
-      # internal artifact-upload hits GitHub's old api-version=6.0-preview
-      # pipeline endpoint, which 400s regardless of permissions - confirmed
-      # on three separate attempts (default name, custom name, and again
-      # after granting actions: write). The scan itself succeeds either way
-      # (fail_action: false) - we just upload the report ourselves below,
-      # through the current, actively-maintained artifact API instead.
+      # process). The action ALWAYS attempts its own internal artifact
+      # upload regardless of whether artifact_name is set (confirmed: with
+      # it unset, it just falls back to its hardcoded default "zap_scan" and
+      # fails identically) - that upload hits GitHub's old
+      # api-version=6.0-preview pipeline endpoint, which 400s no matter what
+      # (confirmed across four separate attempts: default name, custom name,
+      # after granting actions: write, and with artifact_name removed
+      # entirely). The actual scan work completes fine regardless - confirmed
+      # directly, since the separate actions/upload-artifact@v4 step below
+      # already succeeds at capturing the real zap-report.xml every time.
+      # continue-on-error here stops this one unfixable, cosmetic internal
+      # failure from failing the whole job when everything that actually
+      # matters (the scan, the report, the portal upload) already works.
       - name: Run OWASP ZAP Baseline Scan
+        continue-on-error: true
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: 'http://localhost:5000'
