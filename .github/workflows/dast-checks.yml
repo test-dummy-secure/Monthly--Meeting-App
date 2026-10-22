@@ -30,6 +30,24 @@ jobs:
           # to connect with a different, mismatched set.
           echo "DB_NAME=testdb" >> .env
           echo "DB_USER=testuser" >> .env
+          # config/validate.js (validateConfig(), called first thing in
+          # server.js's startServer()) hard-throws in production - NODE_ENV=
+          # production is set explicitly by docker-compose.yml for the backend
+          # service - if ANY of the following are missing or match a known
+          # weak/default value. The backend was crash-looping on startup
+          # before it ever reached a DB connection attempt or the healthcheck,
+          # which is why the curl/DB-credential fixes alone didn't resolve it.
+          echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)" >> .env
+          echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> .env
+          echo "NXG360_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
+          echo "TOKEN_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
+          echo "CLIENT_URL=https://app.test.local" >> .env
+          echo "SMTP_USER=test@test.local" >> .env
+          echo "SMTP_PASS=testsmtppass" >> .env
+          echo "SMTP_FROM=NxgSecure Test <test@test.local>" >> .env
+          echo "MS_CLIENT_ID=00000000-0000-0000-0000-000000000000" >> .env
+          echo "SUPER_ADMIN_EMAIL=admin@test.local" >> .env
+          echo "SUPER_ADMIN_PASSWORD=TestAdmin2026Secure" >> .env
           cp .env .env.production
 
       # 2. Start Application Stack via Docker Compose
