@@ -16,20 +16,23 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # 1. Create environment files matching your exact docker-compose variables
       - name: Create Environment Files
         run: |
           echo "VITE_API_URL=https://api.test.local" >> .env
+          echo "DB_NAME=BMMJ" >> .env
+          echo "DB_USER=bmmj_user" >> .env
           echo "DB_PASSWORD=testpassword" >> .env
           echo "REDIS_PASSWORD=testpassword" >> .env
-          echo "POSTGRES_DB=testdb" >> .env
-          echo "POSTGRES_USER=testuser" >> .env
           echo "JWT_ACCESS_SECRET=test-super-secret-access-token-key-12345" >> .env
           echo "JWT_REFRESH_SECRET=test-super-secret-refresh-token-key-12345" >> .env
           cp .env .env.production
 
+      # 2. Start Application Stack via Docker Compose
       - name: Start Application Stack via Docker Compose
         run: docker compose up -d
 
+      # 3. Wait for the backend health check to pass
       - name: Wait for Backend Health Check
         run: |
           echo "Waiting for backend to respond..."
@@ -43,6 +46,7 @@ jobs:
           echo "Backend failed to start in time"
           exit 1
 
+      # 4. Debug Logs if Health Check Fails
       - name: Debug Container Logs on Failure
         if: failure()
         run: |
@@ -53,6 +57,7 @@ jobs:
           echo "=== DATABASE LOGS ==="
           docker compose logs postgres
 
+      # 5. Run OWASP ZAP Baseline Scan
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
         with:
@@ -61,6 +66,7 @@ jobs:
           report_format: xml
           output_file: 'zap-report.xml'
 
+      # 6. Keep the report as a downloadable artifact
       - name: Keep the report (downloadable for 90 days)
         if: always()
         uses: actions/upload-artifact@v4
@@ -68,6 +74,7 @@ jobs:
           name: zap-report-${{ github.run_id }}
           path: zap-report.xml
 
+      # 7. Upload scan to Security Platform (NXG Secure / DefectDojo)
       - name: Upload scan to Security Platform
         if: always()
         shell: bash
@@ -82,6 +89,7 @@ jobs:
             -F scan_type="ZAP Scan" \
             -F file=@zap-report.xml
 
+      # 8. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down
