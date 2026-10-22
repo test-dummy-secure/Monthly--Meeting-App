@@ -16,6 +16,15 @@ jobs:
   dast:
     name: DAST (Dynamic Web App Check)
     runs-on: ubuntu-latest
+    env:
+      # Single source of truth - referenced by both the env-file generation
+      # step and the login step below, instead of each hardcoding its own
+      # copy (which is exactly how they can silently drift out of sync).
+      # Some credential has to exist somewhere for a real login to work at
+      # all - config/validate.js hard-requires these just to boot the
+      # container - this is as close to credential-free as that allows.
+      TEST_SUPER_ADMIN_EMAIL:    admin@test.local
+      TEST_SUPER_ADMIN_PASSWORD: TestAdmin2026Secure
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -40,8 +49,8 @@ jobs:
           echo "SMTP_PASS=testsmtppass" >> .env
           echo "SMTP_FROM=NxgSecure Test <test@test.local>" >> .env
           echo "MS_CLIENT_ID=00000000-0000-0000-0000-000000000000" >> .env
-          echo "SUPER_ADMIN_EMAIL=admin@test.local" >> .env
-          echo "SUPER_ADMIN_PASSWORD=TestAdmin2026Secure" >> .env
+          echo "SUPER_ADMIN_EMAIL=$TEST_SUPER_ADMIN_EMAIL" >> .env
+          echo "SUPER_ADMIN_PASSWORD=$TEST_SUPER_ADMIN_PASSWORD" >> .env
           cp .env .env.production
 
       # 2. Start Application Stack via Docker Compose
@@ -96,7 +105,7 @@ jobs:
         run: |
           TOKEN=$(curl -sf -X POST http://localhost:5000/api/auth/login \
             -H "Content-Type: application/json" \
-            -d '{"email":"admin@test.local","password":"TestAdmin2026Secure"}' \
+            -d "{\"email\":\"$TEST_SUPER_ADMIN_EMAIL\",\"password\":\"$TEST_SUPER_ADMIN_PASSWORD\"}" \
             | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])")
           if [ -z "$TOKEN" ]; then
             echo "::warning::Could not obtain an access token - scan will run unauthenticated"
