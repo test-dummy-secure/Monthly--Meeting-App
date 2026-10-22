@@ -1,8 +1,9 @@
 name: DAST Security Scan (OWASP ZAP)
 
 on:
-  pull_request:                 # triggers on every proposed code change
-  workflow_dispatch:            # manual testing button
+  pull_request:                 # triggers on every proposed code change targeting main
+    branches: [ main ]
+  workflow_dispatch:            # manual testing button from Actions tab
 
 permissions:
   contents: read
@@ -15,11 +16,21 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Spin up your multi-container stack locally so ZAP has a target
+      # 1. Create temporary environment files so docker-compose doesn't fail on missing .env files
+      - name: Create Environment Files
+        run: |
+          echo "VITE_API_URL=http://localhost:5000" >> .env
+          echo "DB_PASSWORD=testpassword" >> .env
+          echo "REDIS_PASSWORD=testpassword" >> .env
+          echo "POSTGRES_DB=testdb" >> .env
+          echo "POSTGRES_USER=testuser" >> .env
+          cp .env .env.production
+
+      # 2. Start Application Stack via Docker Compose
       - name: Start Application Stack via Docker Compose
         run: docker compose up -d
 
-      # 2. Wait for the backend health check to pass
+      # 3. Wait for the backend health check to pass
       - name: Wait for Backend Health Check
         run: |
           echo "Waiting for backend to respond..."
@@ -33,7 +44,7 @@ jobs:
           echo "Backend failed to start in time"
           exit 1
 
-      # 3. Run OWASP ZAP Baseline Scan against your local running container
+      # 4. Run OWASP ZAP Baseline Scan against your local running container
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
         with:
@@ -42,7 +53,7 @@ jobs:
           report_format: json
           output_file: 'zap-report.json'
 
-      # 4. Keep the report as an artifact (just like your sast/sca checks)
+      # 5. Keep the report as a downloadable workflow artifact
       - name: Keep the report (downloadable for 90 days)
         if: always()
         uses: actions/upload-artifact@v4
@@ -50,7 +61,7 @@ jobs:
           name: zap-report-${{ github.run_id }}
           path: zap-report.json
 
-      # 5. Optional: Reimport scan results to your central platform if desired
+      # 6. Reimport scan results to your central platform (DefectDojo/NXG Secure)
       - name: Upload scan to Security Platform
         if: always()
         shell: bash
@@ -64,7 +75,7 @@ jobs:
             -F scan_type="ZAP Scan" \
             -F file=@zap-report.json || true
 
-      # 6. Clean up containers
+      # 7. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down
