@@ -132,10 +132,13 @@ jobs:
       # downstream. The real way to control the output report is cmd_options
       # (passed straight to the underlying zap-baseline.py script: -x for
       # XML, -z to pass the auth config through to the underlying ZAP
-      # process). artifact_name overrides the action's own default internal
-      # artifact upload (its unnamed default, "zap_scan", was being rejected
-      # by the artifact API) - giving it a unique name here also means we
-      # don't need a separate, redundant upload-artifact step afterward.
+      # process). artifact_name deliberately NOT set: the action's own
+      # internal artifact-upload hits GitHub's old api-version=6.0-preview
+      # pipeline endpoint, which 400s regardless of permissions - confirmed
+      # on three separate attempts (default name, custom name, and again
+      # after granting actions: write). The scan itself succeeds either way
+      # (fail_action: false) - we just upload the report ourselves below,
+      # through the current, actively-maintained artifact API instead.
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
         with:
@@ -146,9 +149,19 @@ jobs:
           # filename against its own default cwd (/zap/), not the mount -
           # confirmed directly from a real run: "No such file: /zap/zap-auth.conf"
           cmd_options: '-x zap-report.xml -z "-configfile /zap/wrk/zap-auth.conf"'
-          artifact_name: 'zap-report-${{ github.run_id }}'
 
-      # 8. Upload scan to Security Platform (NXG Secure / DefectDojo)
+      # 8. Keep the report as a downloadable artifact
+      # Using this instead of the ZAP action's own internal upload, which
+      # fails against GitHub's old preview artifact API - see note above.
+      - name: Keep the report (downloadable for 90 days)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-${{ github.run_id }}
+          path: zap-report.xml
+          if-no-files-found: warn
+
+      # 9. Upload scan to Security Platform (NXG Secure / DefectDojo)
       - name: Upload scan to Security Platform
         if: always()
         shell: bash
@@ -163,7 +176,7 @@ jobs:
             -F scan_type="ZAP Scan" \
             -F file=@zap-report.xml
 
-      # 9. Clean up containers
+      # 10. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down
