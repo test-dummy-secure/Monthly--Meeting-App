@@ -11,6 +11,11 @@ COPY . .
 # Stage 2: Runtime Production Container
 FROM node:18-alpine AS runner
 
+# curl is required by docker-compose.yml's healthcheck (CMD-SHELL curl ... /health) -
+# the node:alpine base image does not ship it by default, which was causing the
+# healthcheck command itself to fail regardless of app state.
+RUN apk add --no-cache curl
+
 WORKDIR /usr/src/app
 ENV NODE_ENV=production
 
