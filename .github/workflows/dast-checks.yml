@@ -7,10 +7,6 @@ on:
 
 permissions:
   contents: read
-  # zaproxy/action-baseline opens a GitHub Issue per alert found when the scan
-  # report is non-empty - without this it fails with "Resource not accessible
-  # by integration" the moment any alert exists.
-  issues: write
 
 jobs:
   dast:
@@ -20,45 +16,20 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Create environment files with a production-style URL format to pass Vite's build validation
       - name: Create Environment Files
         run: |
           echo "VITE_API_URL=https://api.test.local" >> .env
           echo "DB_PASSWORD=testpassword" >> .env
           echo "REDIS_PASSWORD=testpassword" >> .env
-          # DB_NAME/DB_USER (not POSTGRES_DB/POSTGRES_USER) - these are the exact
-          # names docker-compose.yml's ${DB_NAME:-BMMJ}/${DB_USER:-bmmj_user}
-          # substitution and the backend's own config/index.js defaults both read.
-          # The old POSTGRES_DB/POSTGRES_USER names matched neither, so Postgres
-          # was provisioned with one set of credentials while the backend tried
-          # to connect with a different, mismatched set.
-          echo "DB_NAME=testdb" >> .env
-          echo "DB_USER=testuser" >> .env
-          # config/validate.js (validateConfig(), called first thing in
-          # server.js's startServer()) hard-throws in production - NODE_ENV=
-          # production is set explicitly by docker-compose.yml for the backend
-          # service - if ANY of the following are missing or match a known
-          # weak/default value. The backend was crash-looping on startup
-          # before it ever reached a DB connection attempt or the healthcheck,
-          # which is why the curl/DB-credential fixes alone didn't resolve it.
-          echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)" >> .env
-          echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> .env
-          echo "NXG360_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
-          echo "TOKEN_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
-          echo "CLIENT_URL=https://app.test.local" >> .env
-          echo "SMTP_USER=test@test.local" >> .env
-          echo "SMTP_PASS=testsmtppass" >> .env
-          echo "SMTP_FROM=NxgSecure Test <test@test.local>" >> .env
-          echo "MS_CLIENT_ID=00000000-0000-0000-0000-000000000000" >> .env
-          echo "SUPER_ADMIN_EMAIL=admin@test.local" >> .env
-          echo "SUPER_ADMIN_PASSWORD=TestAdmin2026Secure" >> .env
+          echo "POSTGRES_DB=testdb" >> .env
+          echo "POSTGRES_USER=testuser" >> .env
+          echo "JWT_ACCESS_SECRET=test-super-secret-access-token-key-12345" >> .env
+          echo "JWT_REFRESH_SECRET=test-super-secret-refresh-token-key-12345" >> .env
           cp .env .env.production
 
-      # 2. Start Application Stack via Docker Compose
       - name: Start Application Stack via Docker Compose
         run: docker compose up -d
 
-      # 3. Wait for the backend health check to pass (Checking both /health and root /)
       - name: Wait for Backend Health Check
         run: |
           echo "Waiting for backend to respond..."
@@ -72,7 +43,6 @@ jobs:
           echo "Backend failed to start in time"
           exit 1
 
-      # 4. Debug Logs if Health Check Fails
       - name: Debug Container Logs on Failure
         if: failure()
         run: |
@@ -83,38 +53,35 @@ jobs:
           echo "=== DATABASE LOGS ==="
           docker compose logs postgres
 
-      # 5. Run OWASP ZAP Baseline Scan against your local running container
       - name: Run OWASP ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.12.0
         with:
           target: 'http://localhost:5000'
           fail_action: false
-          report_format: json
-          output_file: 'zap-report.json'
+          report_format: xml
+          output_file: 'zap-report.xml'
 
-      # 6. Keep the report as a downloadable workflow artifact
       - name: Keep the report (downloadable for 90 days)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-report-${{ github.run_id }}
-          path: zap-report.json
+          path: zap-report.xml
 
-      # 7. Reimport scan results to your central platform
       - name: Upload scan to Security Platform
         if: always()
         shell: bash
         run: |
-          curl -sf -X POST "https://nxg.app.nxgsecure.com/api/v2/reimport-scan/" \
+          echo "Uploading ZAP scan report to NXG Portal..."
+          curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
             -F auto_create_context=true \
             -F product_type_name="${{ github.repository_owner }}" \
             -F product_name="${{ github.event.repository.name }}" \
             -F engagement_name="DAST" \
             -F scan_type="ZAP Scan" \
-            -F file=@zap-report.json || true
+            -F file=@zap-report.xml
 
-      # 8. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down
