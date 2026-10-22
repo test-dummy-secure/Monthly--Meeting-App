@@ -1,5 +1,12 @@
 # Stage 1: Build & Dependencies
-FROM node:18-alpine AS builder
+# Node 20, not 18: pdf-parse pulls in pdfjs-dist@5.x, which requires Node >= 20
+# (process.getBuiltinModule, added in 20.16) - on Node 18 this crashed the whole
+# process at boot, since meeting-logs.routes.js requires it eagerly via
+# meetingNotes.service -> noteExtractor.service. Node 18 itself is also EOL
+# (April 2025). Builder and runner must match so @napi-rs/canvas's native
+# binary (another pdf-parse dependency) is built against the same Node ABI
+# it actually runs under.
+FROM node:20-alpine AS builder
 
 WORKDIR /usr/src/app
 
@@ -9,7 +16,7 @@ RUN npm ci --legacy-peer-deps
 COPY . .
 
 # Stage 2: Runtime Production Container
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 
 # curl is required by docker-compose.yml's healthcheck (CMD-SHELL curl ... /health) -
 # the node:alpine base image does not ship it by default, which was causing the
