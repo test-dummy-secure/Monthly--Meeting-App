@@ -126,36 +126,27 @@ jobs:
           replacer.full_list(0).replacement=Bearer $TOKEN
           EOF
 
-      # 7. Run OWASP ZAP Baseline Scan
-      # report_format/output_file were never real inputs for this action -
-      # they were silently ignored, which is why zap-report.xml never existed
-      # downstream. The real way to control the output report is cmd_options
-      # (passed straight to the underlying zap-baseline.py script: -x for
-      # XML, -z to pass the auth config through to the underlying ZAP
-      # process). The action ALWAYS attempts its own internal artifact
-      # upload regardless of whether artifact_name is set (confirmed: with
-      # it unset, it just falls back to its hardcoded default "zap_scan" and
-      # fails identically) - that upload hits GitHub's old
-      # api-version=6.0-preview pipeline endpoint, which 400s no matter what
-      # (confirmed across four separate attempts: default name, custom name,
-      # after granting actions: write, and with artifact_name removed
-      # entirely). The actual scan work completes fine regardless - confirmed
-      # directly, since the separate actions/upload-artifact@v4 step below
-      # already succeeds at capturing the real zap-report.xml every time.
-      # continue-on-error here stops this one unfixable, cosmetic internal
-      # failure from failing the whole job when everything that actually
-      # matters (the scan, the report, the portal upload) already works.
+      # 7. Run OWASP ZAP Baseline Scan - direct docker run, not the action
+      # zaproxy/action-baseline's own internal artifact upload always fails
+      # against GitHub's deprecated api-version=6.0-preview pipeline endpoint
+      # (confirmed: a documented, acknowledged bug in the action itself - see
+      # github.com/orgs/community/discussions/162449 - "no newer release
+      # exists to upgrade to" since the bug is in the action's bundled code,
+      # not anything we configure). continue-on-error previously contained
+      # the damage; this removes it at the source instead, by running the
+      # exact same underlying command the action itself runs (confirmed
+      # directly from a prior run's own logs) without going through the
+      # action wrapper at all - so there's no internal upload call left to
+      # fail in the first place.
       - name: Run OWASP ZAP Baseline Scan
-        continue-on-error: true
-        uses: zaproxy/action-baseline@v0.12.0
-        with:
-          target: 'http://localhost:5000'
-          fail_action: false
-          # -configfile needs the absolute in-container path - the workspace
-          # mounts at /zap/wrk/, but ZAP's own CLI resolves a bare relative
-          # filename against its own default cwd (/zap/), not the mount -
-          # confirmed directly from a real run: "No such file: /zap/zap-auth.conf"
-          cmd_options: '-x zap-report.xml -z "-configfile /zap/wrk/zap-auth.conf"'
+        run: |
+          docker pull ghcr.io/zaproxy/zaproxy:stable
+          docker run -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
+            ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+            -t http://localhost:5000 \
+            -x zap-report.xml \
+            -z "-configfile /zap/wrk/zap-auth.conf" \
+            || true
 
       # 8. Keep the report as a downloadable artifact
       # Using this instead of the ZAP action's own internal upload, which
@@ -181,14 +172,21 @@ jobs:
       # dependency on link discovery. New ground, not yet run live - same
       # continue-on-error precaution as the baseline step above, so a
       # problem here can't block the rest of the job while it's unverified.
+      # Same direct-docker-run approach as the baseline step above, for the
+      # same reason - zaproxy/action-api-scan shares the same bundled
+      # artifact-upload code as action-baseline. zap-api-scan.py is the
+      # underlying script this action wraps (same automation-framework
+      # script family as zap-baseline.py, documented ZAP CLI convention) -
+      # -f for the spec format, -t for the spec location, same -x/-z pattern.
       - name: Run OWASP ZAP API Scan (OpenAPI)
-        continue-on-error: true
-        uses: zaproxy/action-api-scan@v0.9.0
-        with:
-          target: 'http://localhost:5000/api/docs.json'
-          format: openapi
-          fail_action: false
-          cmd_options: '-x api-scan-report.xml -z "-configfile /zap/wrk/zap-auth.conf"'
+        run: |
+          docker run -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
+            ghcr.io/zaproxy/zaproxy:stable zap-api-scan.py \
+            -t http://localhost:5000/api/docs.json \
+            -f openapi \
+            -x api-scan-report.xml \
+            -z "-configfile /zap/wrk/zap-auth.conf" \
+            || true
 
       # 10. Keep the API scan report as a downloadable artifact
       - name: Keep the API scan report (downloadable for 90 days)
