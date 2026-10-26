@@ -1,380 +1,131 @@
 # Backend Stabilization Report
-**Date:** 2026-06-04  
-**Status:** ✅ Complete and Verified
+**Date:** 2026-10-26
+**Status:** ✅ Working, Stabilized Version — supersedes the 2026-06-04 report in full
+
+> The previous version of this report documented an early prototype stage of
+> the backend (mock JWT tokens, in-memory mock repositories, no real
+> database). Every item listed under that report's "Next Steps (Phase 2)" has
+> since been completed. This report reflects the actual current state of the
+> system and the security/CI work done most recently.
 
 ---
 
 ## Executive Summary
 
-The BMMJ backend has been stabilized with the following achievements:
-
-1. ✅ **All 10 route modules registered** (was 2/10, now 10/10)
-2. ✅ **Module format standardized to CommonJS** across all backend files
-3. ✅ **Error handling consolidated** into single errorHandler.js
-4. ✅ **Database layer unified** (pool.js stub removed, database/index.js as primary)
-5. ✅ **Health check endpoint added** (`/health`)
-6. ✅ **PostgreSQL driver added** to package.json dependencies
-7. ✅ **Authentication middleware verified** and chain established
-8. ✅ **No duplicate services found** (only findingsService.js exists)
-9. ✅ **Backend server starts successfully** with all routes loaded
+1. ✅ **Real authentication** — bcrypt-hashed passwords, separate access/refresh JWT secrets, DB-backed refresh token storage, role-based access control
+2. ✅ **Real database** — PostgreSQL, 51+ applied migrations, connection pooling via `pg`
+3. ✅ **Real multi-tenant architecture** — tenant isolation via `tenant_assignments`, AM roster-aware (not just a single "primary" owner)
+4. ✅ **Pluggable AI provider layer** — Ollama (local), OpenAI, and Claude, selectable via one config switch, with automatic fallback to local on cloud failure
+5. ✅ **Real third-party integrations** — Microsoft 365 (OAuth, Calendar, Graph), Fireflies AI (meeting transcription), ClickUp (task sync), NXG360 (findings)
+6. ✅ **Full Docker containerization** — backend, frontend, Postgres, Redis, all compose-orchestrated
+7. ✅ **Self-published OpenAPI spec** (`/api/docs.json`) — used for both API documentation and automated security scanning
+8. ✅ **4 automated security pipelines live in CI** — SAST, SCA, Secrets/SBOM, and DAST, all reporting into the NXG Secure (DefectDojo) portal
+9. ✅ **Several real, confirmed vulnerabilities found and fixed** this cycle (see below) — not just pipeline plumbing
 
 ---
 
-## Files Modified
+## Security Fixes Applied (this cycle)
 
-### Core Application Files
+These were found by Semgrep (SAST) and OWASP ZAP (DAST) against the real, running application — not theoretical findings.
 
-#### 1. **app.js** - MAJOR REFACTOR
-- **Before:** 2 routes mounted (onboarding, calendar)
-- **After:** 10 routes mounted + 1 health endpoint
-- **Changes:**
-  - Added imports for all 8 previously unmounted route modules
-  - Added auth middleware to route chain
-  - Added `/health` endpoint (no auth required)
-  - Organized routes into public/protected groups
-  - Added 404 handler
-  - Fixed error handler middleware chain
-
-#### 2. **database/index.js** - CONVERTED TO COMMONJS
-- **Before:** ESM format (import/export)
-- **After:** CommonJS (require/module.exports)
-- **Changes:**
-  - Converted all imports to require statements
-  - Added Winston logger integration
-  - Added connection event logging
-  - Now exports real pg.Pool instance
-
-#### 3. **config/db.js** - DEPRECATED & STANDARDIZED
-- **Before:** ESM with DATABASE_URL env var
-- **After:** CommonJS wrapper with config/index.js
-- **Changes:**
-  - Marked as deprecated (use database/index.js instead)
-  - Converted to CommonJS for compatibility
-  - Now uses config/index.js for connection parameters
-  - Exports { query, pool } for backwards compatibility
-
-#### 4. **middleware/errorHandler.js** - CONVERTED & CONSOLIDATED
-- **Before:** ESM format with minimal logging
-- **After:** CommonJS with comprehensive logging
-- **Changes:**
-  - Converted to CommonJS module.exports
-  - Integrated Winston logger
-  - Development mode includes stack traces
-  - Consolidates error handling from error.middleware.js
-
-#### 5. **controllers/findingsController.js** - CONVERTED & FIXED
-- **Before:** ESM format with broken imports
-- **After:** CommonJS with mock data
-- **Changes:**
-  - Converted to CommonJS require/module.exports
-  - Added mock findings and AI tasks data
-  - Fixed function signatures to match route expectations
-  - Added proper error handling with logger
-  - All 3 exports: getAllFindings, getFindingById, getAITasksForFinding
-
-#### 6. **package.json** - ADDED DEPENDENCY
-- **Before:** Missing pg driver
-- **After:** pg ^8.11.3 added
-- **Change:** Added "pg": "^8.11.3" to dependencies
+| # | Issue | Severity | File(s) | Fix |
+|---|---|---|---|---|
+| 1 | Path traversal risk | Medium | `routes/meeting-logs.routes.js` | Validate `tenantId`/`meetingId` as well-formed UUIDs before use in `path.join` |
+| 2 | Weak GCM decryption config | Medium | `utils/encryption.js`, `services/microsoft/MicrosoftTokenStore.js` | Explicit `authTagLength` on `createDecipheriv` |
+| 3 | XSS via unescaped URL in email templates | Medium | `services/email.service.js` | Centralized scheme validation (`sanitizeUrlValue`) in the template renderer — covers all 6 affected email templates from one place |
+| 4 | Hardcoded live admin credentials in source | **Critical** | `frontend/src/pages/Login.jsx`, `backend/src/database/seed.js`, `README.md` | Removed the dev "quick login" feature entirely; demo credentials de-coupled from the real admin account's password, before the repository was ever pushed to GitHub |
+| 5 | Missing response caching controls | Low | `app.js` | Global `Cache-Control: no-store` — this is an API backend with no public cacheable assets |
+| 6 | Multi-AM tenant visibility bug | — (functional, not security) | `routes/meeting.routes.js`, `repositories/calendar.repository.js`, `routes/fireflies.routes.js` | Fireflies/Microsoft 365 connection checks only recognized a tenant's *primary* AM; fixed to recognize any assigned AM |
 
 ---
 
-## Route Map
+## CI/CD Security Pipeline (GitHub Actions)
 
-### Registered Routes (10 routes × base paths)
+Four workflows run automatically on every pull request:
 
-| Method | Endpoint | Auth | Route File | Status |
-|--------|----------|------|-----------|--------|
-| POST | `/api/auth/login` | ❌ Public | auth.routes.js | ✅ Mounted |
-| POST | `/api/auth/logout` | ❌ Public | auth.routes.js | ✅ Mounted |
-| GET | `/api/customers` | ✅ Required | customer.routes.js | ✅ Mounted |
-| POST | `/api/customers` | ✅ super_admin | customer.routes.js | ✅ Mounted |
-| PUT | `/api/customers/:id` | ✅ super_admin | customer.routes.js | ✅ Mounted |
-| GET | `/api/meetings` | ✅ Required | meeting.routes.js | ✅ Mounted |
-| GET | `/api/meetings/:id` | ✅ Required | meeting.routes.js | ✅ Mounted |
-| POST | `/api/meetings/configs` | ✅ Required | meeting.routes.js | ✅ Mounted |
-| POST | `/api/meetings/:id/trigger-workflow` | ✅ Required | meeting.routes.js | ✅ Mounted |
-| POST | `/api/meetings/:id/request-reschedule` | ✅ Required | meeting.routes.js | ✅ Mounted |
-| POST | `/api/meetings/:id/review-reschedule` | ✅ Required | meeting.routes.js | ✅ Mounted |
-| POST | `/api/meetings/:id/conduct` | ✅ Required | meeting.routes.js | ✅ Mounted |
-| POST | `/api/meetings/:id/close` | ✅ Required | meeting.routes.js | ✅ Mounted |
-| PUT | `/api/tasks/:taskId/status` | ✅ Required | task.routes.js | ✅ Mounted |
-| GET | `/api/audit-logs` | ✅ Required | audit-log.routes.js | ✅ Mounted |
-| POST | `/api/integrations/connect` | ✅ Required | integration.routes.js | ✅ Mounted |
-| POST | `/api/integrations/disconnect` | ✅ Required | integration.routes.js | ✅ Mounted |
-| GET | `/api/analytics` | ✅ Required | analytics.routes.js | ✅ Mounted |
-| GET | `/api/findings` | ✅ Required | findings.js | ✅ Mounted |
-| GET | `/api/findings/:id` | ✅ Required | findings.js | ✅ Mounted |
-| GET | `/api/findings/:id/ai-tasks` | ✅ Required | findings.js | ✅ Mounted |
-| GET | `/api/onboarding/status` | ? | onboardingRoutes.js | ✅ Mounted |
-| GET | `/api/onboarding/step` | ? | onboardingRoutes.js | ✅ Mounted |
-| GET | `/api/onboarding/checklist` | ? | onboardingRoutes.js | ✅ Mounted |
-| GET | `/api/calendar/events` | ? | calendarRoutes.js | ✅ Mounted |
-| POST | `/api/calendar/events` | ? | calendarRoutes.js | ✅ Mounted |
-| DELETE | `/api/calendar/events` | ? | calendarRoutes.js | ✅ Mounted |
-| **GET** | **`/health`** | ❌ Public | app.js | ✅ **NEW** |
+| Workflow | Checks | Status |
+|---|---|---|
+| **SAST** (code check) | Semgrep static analysis against the real source | ✅ Passing |
+| **SCA** (dependency check) | Known-vulnerability scan of all npm dependencies | ✅ Passing |
+| **Secrets / SBOM** | Leaked-credential scan + software bill of materials | ✅ Passing |
+| **DAST** (dynamic scan) | OWASP ZAP against a live, running copy of the app | ✅ Passing — see below |
 
-**Total: 28 endpoints registered**
+### DAST pipeline — built out this cycle
+
+The dynamic scan now:
+1. Spins up a complete, disposable copy of the full stack (Postgres, Redis, backend, frontend) inside the CI runner itself
+2. **Logs in for real** using a test account, so the scan covers authenticated/protected routes, not just public ones
+3. Runs two scans: a general baseline scan, and a second scan **driven directly by the application's own OpenAPI spec** (`/api/docs.json`) — this is what gives it real route-by-route coverage instead of relying on link-crawling (which doesn't work against a JSON API with no clickable pages)
+4. Uploads both reports to the NXG Secure (DefectDojo) portal automatically
+
+**Real, measured result:** endpoint coverage in the security portal went from **1 host / 3 endpoints** (before the OpenAPI-driven scan existed — ZAP could only find generic paths like `/robots.txt`) to **1 host / 115 real endpoints** (the actual API surface of the application).
+
+**Scope note:** this pipeline currently scans the **backend only** (port 5000). The frontend (the UI pages a person actually clicks through) is built and started in CI but not yet scanned — that would need a separate, traditional link-crawling scan against port 80, which hasn't been built yet.
 
 ---
 
-## Service Map
+## Architecture — Current State
 
-### Service Layer Files
+### Backend Stack
+- **Runtime:** Node.js 20 (upgraded from 18 this cycle — a dependency, `pdf-parse`, requires Node ≥20; Node 18 was also already past its own end-of-life)
+- **Framework:** Express
+- **Database:** PostgreSQL via `pg`, connection-pooled
+- **Queue/Cache:** Redis + BullMQ (background jobs: transcript fetching, reminders, escalations, carry-forward)
+- **Containerization:** Docker, multi-stage builds, orchestrated via `docker-compose.yml`
 
-| Service | Location | Purpose | Status |
-|---------|----------|---------|--------|
-| findingsService.js | `/services/findingsService.js` | Query findings and AI tasks from DB | ✅ Active |
+### Authentication & Authorization
+- bcrypt password hashing (12 rounds)
+- Separate signing secrets for access vs. refresh tokens, both required to be strong, random values in production (enforced by a startup validator — the app refuses to boot with weak/default secrets)
+- Refresh tokens persisted and revocable
+- Role-based access: `super_admin`, `account_manager`
+- Tenant isolation enforced per-request via `tenant.middleware.js`
 
-**Status:** No duplicate services found. Service layer is minimal (1 file) and focused.
+### AI Processing Layer
+- Pluggable provider architecture (`services/ai/providerFactory.js`) — Ollama (local), OpenAI, or Claude, switchable via a single `AI_PROVIDER` environment variable, no code changes needed
+- Automatic fallback to local Ollama if a cloud provider errors or rate-limits
+- Used for: meeting transcript structuring, post-meeting task/recommendation generation, AI-assisted findings analysis
 
-### Repository Layer (In-Memory State Engines)
+### Integrations
+| Integration | Purpose | Auth model |
+|---|---|---|
+| Microsoft 365 / Graph | Calendar events, Teams meeting links, email delivery | OAuth2, per-AM user-scoped tokens |
+| Fireflies AI | Automatic meeting transcription | Per-AM API key, user-scoped |
+| ClickUp | Remediation task sync | Per-tenant API token |
+| NXG360 | Security findings ingestion | Per-tenant encrypted API connection |
+| NXG Secure (DefectDojo) | Security scan result aggregation | Platform API token (CI-only) |
 
-| Repository | Location | Entities | Status |
-|-----------|----------|---------|--------|
-| customer.repository.js | `/repositories/customer.repository.js` | customers (3 mock tenants) | ✅ Active |
-| meeting.repository.js | `/repositories/meeting.repository.js` | configs, meetings, findings, tasks | ✅ Active |
-| audit-log.repository.js | `/repositories/audit-log.repository.js` | audit logs (2 mock entries) | ✅ Active |
+### Route Modules (backend/src/app.js)
+`auth`, `nxg360`, `customers`, `meetings`, `tasks`, `meeting-logs`, `integrations`, `analytics`, `findings`, `tenants`, `tracker`, `reports`, `audit-logs`, `ai`, `action-items`, `providers`, `fireflies`, `clickup`, `monitoring`, `notifications`, `ms-oauth` (Microsoft 365), plus a `dev`-only route module that's never mounted in production.
 
-### Mock Data State (localStorage for dev)
-
-All repositories maintain in-memory state with mock data:
-- **Customers:** 3 mock tenants (FinTech Global, AeroSpace Dynamics, MedTech Solutions)
-- **Meetings:** 2 mock meetings with config
-- **Findings:** Mock findings (basic, stored in controller)
-- **Audit Logs:** 2 mock entries
-
----
-
-## Middleware Chain
-
-### Execution Order
-
+### Middleware Stack (order-sensitive)
 ```
-1. helmet()                          → Security headers
-2. cors()                            → Cross-origin requests
-3. express.json()                    → JSON body parsing
-4. express.urlencoded()              → Form body parsing
-5. rateLimit()                       → Rate limiting (100 req/15min)
-6. morgan('combined')                → Request logging
-7. auditLogger                       → Audit trail middleware
-8. [route-specific middleware]       → Per-route auth/validation
-   ├─ Public routes: no middleware
-   ├─ Protected routes: authMiddleware
-9. [route handlers]                  → Route-specific logic
-10. 404 handler                      → Not found response
-11. errorHandler                     → Global error handling
-```
-
-### Middleware Files
-
-| Middleware | Location | Purpose | Status |
-|-----------|----------|---------|--------|
-| authMiddleware | `/middleware/auth.middleware.js` | Token validation, role extraction | ✅ Verified |
-| errorHandler | `/middleware/errorHandler.js` | Global error response formatting | ✅ Verified |
-| auditLogger | `/middleware/auditLogger.js` | Request/action logging | ✅ Verified |
-| rate-limiter | `/middleware/rate-limiter.middleware.js` | IP-based rate limiting | ✅ Verified |
-| tenantMiddleware | `/middleware/tenant.middleware.js` | Multi-tenant isolation (reserved) | ✅ Available |
-
----
-
-## Dependency Map
-
-### Module Format Consistency
-
-| File | Before | After | Status |
-|------|--------|-------|--------|
-| app.js | CommonJS ✅ | CommonJS ✅ | ✅ No change |
-| database/index.js | ESM ❌ | CommonJS ✅ | ✅ Fixed |
-| config/db.js | ESM ❌ | CommonJS ✅ | ✅ Fixed |
-| middleware/errorHandler.js | ESM ❌ | CommonJS ✅ | ✅ Fixed |
-| controllers/findingsController.js | ESM ❌ | CommonJS ✅ | ✅ Fixed |
-| services/findingsService.js | CommonJS ✅ | CommonJS ✅ | ✅ No change |
-| All routes | CommonJS ✅ | CommonJS ✅ | ✅ No change |
-| All middleware | CommonJS ✅ | CommonJS ✅ | ✅ No change |
-| All repositories | CommonJS ✅ | CommonJS ✅ | ✅ No change |
-
-**Result:** 100% CommonJS standardization ✅
-
-### Import Chain for Findings Route (Example)
-
-```
-app.js
-  ├─ requires: findingsRoutes
-  │    ├─ requires: findingsController
-  │    │    ├─ requires: findingsService
-  │    │    │    ├─ requires: config/db ✅
-  │    │    │    └─ requires: winston logger ✅
-  │    │    └─ requires: utils/logger ✅
-  │    └─ exports: router with 3 handlers
-  └─ mounts: /api/findings -> router
-```
-
-**Status:** All imports verified and working ✅
-
----
-
-## Database Layer
-
-### Architecture
-
-```
-app.js
-  ↓
-database/index.js (PRIMARY - real pg.Pool)
-  ↓
-PostgreSQL Connection Pool
-  ├─ Host: localhost (configurable via env)
-  ├─ Port: 5432 (configurable via env)
-  ├─ Database: bmmj_db (configurable via env)
-  └─ Connection retry: on error, pool logs and exits
-```
-
-### Connection Parameters (from config/index.js)
-
-| Parameter | Env Variable | Default |
-|-----------|------------|---------|
-| Host | DB_HOST | localhost |
-| Port | DB_PORT | 5432 |
-| Database | DB_NAME | bmmj_db |
-| User | DB_USER | postgres |
-| Password | DB_PASSWORD | postgres |
-
-### State of Pool
-
-- **database/pool.js** → ❌ DEPRECATED (was stub, not used)
-- **database/index.js** → ✅ PRIMARY (real pg.Pool, now CommonJS)
-- **config/db.js** → ⚠️ BACKWARDS COMPATIBLE (for legacy imports)
-
----
-
-## Health Check
-
-### New Endpoint
-
-```
-GET /health
-Response: {
-  "status": "ok",
-  "timestamp": "2026-06-04T15:11:45.000Z"
-}
-Status Code: 200
-Auth: None required
-```
-
-**Purpose:** K8s/Docker health probes, uptime monitoring, load balancer checks
-
----
-
-## Authentication
-
-### Mock Token Strategy
-
-| Token | Role | Tenant |
-|-------|------|--------|
-| `mock-jwt-admin-token` | super_admin | null |
-| `mock-jwt-manager-token` | account_manager | tenant-uuid-1 |
-
-### Authorization Levels
-
-| Endpoint | super_admin | account_manager | customer_user |
-|----------|:-----------:|:---------------:|:-------------:|
-| GET /customers | ✅ | ✅ | ❌ |
-| POST /customers | ✅ | ❌ | ❌ |
-| GET /meetings | ✅ | ✅ | ✅ |
-| GET /findings | ✅ | ✅ | ✅ |
-
----
-
-## Server Startup Verification
-
-### Successful Start Log
-
-```
-[2026-06-04 15:11:45] info: ==================================================
-[2026-06-04 15:11:45] info:   BMMJ MSSP SaaS Server started successfully     
-[2026-06-04 15:11:45] info:   Environment: development                  
-[2026-06-04 15:11:45] info:   Listening on Port: 5000              
-[2026-06-04 15:11:45] info: ==================================================
-```
-
-**Verification Status:** ✅ All 10 routes loaded, all imports resolved, server ready to accept requests
-
----
-
-## Next Steps (Phase 2)
-
-### Database Integration
-- [ ] Wire real PostgreSQL queries in repositories
-- [ ] Replace mock data with DB queries
-- [ ] Implement schema migrations
-
-### Authentication
-- [ ] Implement real JWT token issuance
-- [ ] Implement refresh token flow
-- [ ] Remove mock token hardcoding
-
-### API Documentation
-- [ ] Generate OpenAPI/Swagger specs
-- [ ] Document request/response schemas
-- [ ] Add examples for each endpoint
-
-### Testing
-- [ ] Unit tests for controllers
-- [ ] Integration tests for routes
-- [ ] End-to-end tests with real DB
-
-### Deployment
-- [ ] Docker containerization
-- [ ] Environment configuration
-- [ ] Health monitoring setup
-
----
-
-## Troubleshooting
-
-### Port 5000 Already in Use
-```bash
-# Windows: Kill process on port 5000
-netstat -ano | findstr :5000
-taskkill /PID <PID> /F
-
-# Then restart
-npm start
-```
-
-### Database Connection Issues
-```bash
-# Check environment variables
-DB_HOST=localhost DB_PORT=5432 DB_NAME=bmmj_db DB_USER=postgres npm start
-
-# Verify PostgreSQL is running on target host:port
-```
-
-### Missing Dependencies
-```bash
-# Reinstall all dependencies
-npm install
-
-# Verify specific package
-npm list pg
+1. Correlation ID (request tracing)
+2. Helmet (security headers, CSP)
+3. Cache-Control: no-store (all responses)
+4. Compression
+5. CORS (explicit allowlist, no wildcard)
+6. Public routes (no auth — webhooks, task confirmation links)
+7. JSON/urlencoded body parsing
+8. HTTP request logging
+9. Global rate limiting
+10. Request timeout
+11. [route-specific auth middleware]
+12. 404 handler
+13. Global error handler
 ```
 
 ---
 
-## Summary Table
+## GitHub Repository
 
-| Category | Metric | Before | After | Status |
-|----------|--------|--------|-------|--------|
-| **Routes** | Mounted | 2/10 | 10/10 | ✅ +400% |
-| **Module Format** | CommonJS % | 80% | 100% | ✅ Fixed |
-| **Health Checks** | Endpoints | 0 | 1 | ✅ New |
-| **Error Handling** | Consolidated | 2 files | 1 file | ✅ Unified |
-| **Services** | Duplicates | ? | 0 | ✅ Clean |
-| **Database** | Stub vs Real | Stub | Real pg.Pool | ✅ Upgraded |
-| **Server Status** | Startup | Partial | ✅ Success | ✅ Verified |
+- Connected and pushed: `test-dummy-secure/bmmj`
+- All credential hygiene enforced **before** the first push — no real secrets, including a previously-hardcoded live admin password, ever reached git history
+- `.env`/`.env.production` correctly gitignored throughout
 
 ---
 
-**Report Generated:** 2026-06-04  
-**Backend Status:** 🟢 STABLE & OPERATIONAL
+## Known Gaps / Next Steps
+
+- [ ] Frontend (UI) is not yet covered by any DAST scan — only the backend API is scanned today
+- [ ] The "Application Error Disclosure" finding from the latest DAST scan (malformed IDs on routes like `/api/customers/:id` return a raw `500` instead of a clean `400`) is a real, minor fix still outstanding
+- [ ] Automated test coverage (unit/integration) is not yet established for the fixes made this cycle
