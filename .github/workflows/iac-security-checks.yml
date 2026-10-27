@@ -1,0 +1,90 @@
+name: Security Checks (IaC Security)
+
+on:
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: "45 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  iac:
+    name: IaC (Infrastructure Security Scan)
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ vars.REPORT_ONLY == 'true' }}
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check for IaC Files
+        id: check_iac
+        run: |
+          FOUND=$( {
+            find . \( -path './.git' -o -path './node_modules' \) -prune -o \
+              \( -name "*.tf" -o -name "Dockerfile" -o -name "Dockerfile.*" \) -print
+            grep -rle "apiVersion:" -e "AWSTemplateFormatVersion" \
+              --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=.github \
+              --include="*.yaml" --include="*.yml" --include="*.json"
+          } 2>/dev/null | head -n 1 )
+
+          if [ -n "$FOUND" ]; then
+            echo "has_iac=true" >> "$GITHUB_OUTPUT"
+            echo "IaC configuration files detected (for example: $FOUND)."
+          else
+            echo "has_iac=false" >> "$GITHUB_OUTPUT"
+            echo "No IaC configuration files found. Skipping scan."
+          fi
+
+      - name: Run Checkov IaC Scanner
+        if: steps.check_iac.outputs.has_iac == 'true'
+        uses: bridgecrewio/checkov-action@v12
+        continue-on-error: ${{ vars.REPORT_ONLY == 'true' }}
+        with:
+          framework: all
+          output_format: json
+          output_file_path: .
+          file_name: checkov-report.json
+
+      - name: Normalize Checkov Report
+        if: steps.check_iac.outputs.has_iac == 'true' && always()
+        run: |
+          if [ -f results_json.json ]; then
+            mv results_json.json checkov-report.json
+          fi
+          if [ ! -f checkov-report.json ]; then
+            echo "[]" > checkov-report.json
+          fi
+
+      - name: Keep the report (downloadable for 90 days)
+        if: steps.check_iac.outputs.has_iac == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-report-${{ github.run_id }}
+          path: checkov-report.json
+          if-no-files-found: warn
+
+      - name: Upload scans to Security Platform (NXG Secure / DefectDojo)
+        if: >-
+          steps.check_iac.outputs.has_iac == 'true' && always() &&
+          github.event_name != 'pull_request' &&
+          vars.SEND_TO_DEFECTDOJO == 'true'
+        shell: bash
+        run: |
+          if [ -f "checkov-report.json" ] && [ "$(tr -d '[:space:]' < checkov-report.json)" != "[]" ]; then
+            echo "Uploading Checkov IaC scan report to NXG Portal..."
+            curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
+              -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
+              -F "auto_create_context=true" \
+              -F "product_type_name=${{ github.repository_owner }}" \
+              -F "product_name=${{ github.event.repository.name }}" \
+              -F "engagement_name=IaC Security" \
+              -F "scan_type=Checkov Scan" \
+              -F "file=@checkov-report.json" \
+              -F "close_old_findings=true" || true
+          else
+            echo "Checkov JSON report missing or empty, skipping upload."
+          fi
