@@ -67,11 +67,17 @@ jobs:
           path: checkov-report.json
           if-no-files-found: warn
 
+      # Two conditions here were silently blocking every upload, always:
+      # vars.SEND_TO_DEFECTDOJO was never actually created as a repo
+      # variable (confirmed - only REPORT_ONLY exists), so that check always
+      # evaluated false, and github.event_name != 'pull_request' meant it
+      # would also skip every PR-triggered run regardless - which is how
+      # this repo's workflows actually get tested. Neither restriction
+      # exists on dast-checks.yml's equivalent upload step, which we've
+      # already confirmed genuinely uploads (real HTTP 201 from DefectDojo).
+      # Matching that proven, simpler pattern here instead.
       - name: Upload scans to Security Platform (NXG Secure / DefectDojo)
-        if: >-
-          steps.check_iac.outputs.has_iac == 'true' && always() &&
-          github.event_name != 'pull_request' &&
-          vars.SEND_TO_DEFECTDOJO == 'true'
+        if: steps.check_iac.outputs.has_iac == 'true' && always()
         shell: bash
         run: |
           if [ -f "checkov-report.json" ] && [ "$(tr -d '[:space:]' < checkov-report.json)" != "[]" ]; then
