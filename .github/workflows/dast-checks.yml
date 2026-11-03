@@ -10,6 +10,10 @@ on:
         required: true
         default: 'http://localhost:5000'
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   dast:
     name: DAST (Dynamic Web App Check)
