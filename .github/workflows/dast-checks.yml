@@ -27,7 +27,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Adapt to Client's Environment Files (.env, .env.example, or .env.production.example)
+      # 1. Adapt to Client's Environment Files and inject VITE_API_URL for frontend builds
       - name: Setup Client Environment Variables
         run: |
           if [ -f ".env.production.example" ]; then
@@ -49,9 +49,10 @@ jobs:
             cp .env.production .env
           fi
 
-          # Safely append mandatory test credentials without breaking custom configurations
+          # Safely append mandatory test credentials and Vite API URL without breaking custom configs
           echo "" >> .env.production
           echo "# Added automatically by NXGSecure DAST Pipeline" >> .env.production
+          grep -q "VITE_API_URL" .env.production || echo "VITE_API_URL=http://localhost:5000" >> .env.production
           grep -q "SUPER_ADMIN_EMAIL" .env.production || echo "SUPER_ADMIN_EMAIL=$TEST_EMAIL" >> .env.production
           grep -q "SUPER_ADMIN_PASSWORD" .env.production || echo "SUPER_ADMIN_PASSWORD=$TEST_PASSWORD" >> .env.production
           grep -q "JWT_ACCESS_SECRET" .env.production || echo "JWT_ACCESS_SECRET=test-super-secret-access-token-key-12345" >> .env.production
