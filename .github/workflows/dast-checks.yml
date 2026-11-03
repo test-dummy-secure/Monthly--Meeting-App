@@ -27,7 +27,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Adapt to Client's Environment Files and inject VITE_API_URL for frontend builds
+      # 1. Adapt to Client's Environment Files
       - name: Setup Client Environment Variables
         run: |
           if [ -f ".env.production.example" ]; then
@@ -44,12 +44,11 @@ jobs:
             touch .env.production
           fi
 
-          # Ensure a base .env exists for docker-compose compatibility
           if [ ! -f ".env" ]; then
             cp .env.production .env
           fi
 
-          # Safely append mandatory test credentials and Vite API URL without breaking custom configs
+          # Append mandatory variables
           echo "" >> .env.production
           echo "# Added automatically by NXGSecure DAST Pipeline" >> .env.production
           grep -q "VITE_API_URL" .env.production || echo "VITE_API_URL=http://localhost:5000" >> .env.production
@@ -57,13 +56,12 @@ jobs:
           grep -q "SUPER_ADMIN_PASSWORD" .env.production || echo "SUPER_ADMIN_PASSWORD=$TEST_PASSWORD" >> .env.production
           grep -q "JWT_ACCESS_SECRET" .env.production || echo "JWT_ACCESS_SECRET=test-super-secret-access-token-key-12345" >> .env.production
 
-          # Sync .env with the updated production file
           cp .env.production .env
           echo "Environment and production variables successfully initialized."
 
-      # 2. Start Application Stack via Docker Compose
+      # 2. Start Application Stack via Docker Compose (Passing build args to satisfy Vite)
       - name: Start Application Stack via Docker Compose
-        run: docker compose up -d
+        run: VITE_API_URL=http://localhost:5000 docker compose up -d --build
 
       # 3. Flexible Health Check
       - name: Wait for Backend Health Check
