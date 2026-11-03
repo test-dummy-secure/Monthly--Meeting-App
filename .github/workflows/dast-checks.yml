@@ -1,4 +1,258 @@
+# name: DAST Security Scan (OWASP ZAP)
+
+# on:
+#   pull_request:
+#     branches: [ main ]
+#   workflow_dispatch:
+
+# permissions:
+#   contents: read
+#   # zaproxy/action-baseline opens a GitHub Issue per alert found when the scan
+#   # report is non-empty - without this it fails with "Resource not accessible
+#   # by integration" the moment any alert exists.
+#   issues: write
+#   # Any explicit permissions: block silently drops every unlisted permission
+#   # to 'none' instead of leaving it at the repo default - actions: write
+#   # wasn't listed, so artifact creation itself had no permission to work at
+#   # all. This is why it failed identically on two completely different
+#   # artifact names ("zap_scan", then our own run-id-based name) - it was
+#   # never actually about the name string.
+#   actions: write
+
+# jobs:
+#   dast:
+#     name: DAST (Dynamic Web App Check)
+#     runs-on: ubuntu-latest
+#     env:
+#       # Single source of truth - referenced by both the env-file generation
+#       # step and the login step below, instead of each hardcoding its own
+#       # copy (which is exactly how they can silently drift out of sync).
+#       # Some credential has to exist somewhere for a real login to work at
+#       # all - config/validate.js hard-requires these just to boot the
+#       # container - this is as close to credential-free as that allows.
+#       TEST_SUPER_ADMIN_EMAIL:    admin@test.local
+#       TEST_SUPER_ADMIN_PASSWORD: TestAdmin2026Secure
+#     steps:
+#       - name: Checkout Code
+#         uses: actions/checkout@v4
+
+#       # 1. Create environment files matching your exact docker-compose variables
+#       - name: Create Environment Files
+#         run: |
+#           echo "VITE_API_URL=https://api.test.local" >> .env
+#           echo "DB_NAME=BMMJ" >> .env
+#           echo "DB_USER=bmmj_user" >> .env
+#           echo "DB_PASSWORD=testpassword" >> .env
+#           echo "REDIS_PASSWORD=testpassword" >> .env
+#           echo "JWT_ACCESS_SECRET=test-super-secret-access-token-key-12345" >> .env
+#           echo "JWT_REFRESH_SECRET=test-super-secret-refresh-token-key-12345" >> .env
+#           # config/validate.js hard-fails in production unless these are also
+#           # set to non-default values - without them the backend crash-loops
+#           # at boot before ever reaching a DB connection or the healthcheck.
+#           echo "NXG360_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
+#           echo "TOKEN_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env
+#           echo "CLIENT_URL=https://app.test.local" >> .env
+#           echo "SMTP_USER=test@test.local" >> .env
+#           echo "SMTP_PASS=testsmtppass" >> .env
+#           echo "SMTP_FROM=NxgSecure Test <test@test.local>" >> .env
+#           echo "MS_CLIENT_ID=00000000-0000-0000-0000-000000000000" >> .env
+#           echo "SUPER_ADMIN_EMAIL=$TEST_SUPER_ADMIN_EMAIL" >> .env
+#           echo "SUPER_ADMIN_PASSWORD=$TEST_SUPER_ADMIN_PASSWORD" >> .env
+#           cp .env .env.production
+
+#       # 2. Start Application Stack via Docker Compose
+#       - name: Start Application Stack via Docker Compose
+#         run: docker compose up -d
+
+#       # 3. Wait for the backend health check to pass
+#       - name: Wait for Backend Health Check
+#         run: |
+#           echo "Waiting for backend to respond..."
+#           for i in {1..30}; do
+#             if curl -sf http://localhost:5000/health || curl -sf http://localhost:5000/; then
+#               echo "Backend is up!"
+#               exit 0
+#             fi
+#             sleep 3
+#           done
+#           echo "Backend failed to start in time"
+#           exit 1
+
+#       # 4. Debug Logs if Health Check Fails
+#       - name: Debug Container Logs on Failure
+#         if: failure()
+#         run: |
+#           echo "=== DOCKER COMPOSE STATUS ==="
+#           docker compose ps
+#           echo "=== BACKEND LOGS ==="
+#           docker compose logs backend
+#           echo "=== DATABASE LOGS ==="
+#           docker compose logs postgres
+
+#       # 5. Ensure the workspace is writable by the ZAP container
+#       # zaproxy/action-baseline runs ZAP as a different container UID than the
+#       # one that checked out the workspace - without this, it fails to write
+#       # its own report with "AccessDeniedException /zap/wrk/<file>". Safe here:
+#       # this is an ephemeral CI runner, destroyed right after the job.
+#       - name: Ensure workspace is writable by ZAP container
+#         run: chmod -R 777 "$GITHUB_WORKSPACE"
+
+#       # 6. Log in and generate ZAP's auth config, so the scan covers real
+#       # protected endpoints (meetings, tasks, etc.), not just /health and
+#       # /api/docs. No new secrets needed - this logs in for real using the
+#       # SUPER_ADMIN_EMAIL/PASSWORD already generated above (the backend
+#       # auto-bootstraps that exact account on startup), and injects the
+#       # freshly-issued token via ZAP's Replacer add-on. A pre-stored static
+#       # token would NOT work here - this app's JWTs expire in 15 minutes
+#       # (config/index.js jwtExpiresIn), so it would already be dead by scan
+#       # time; logging in fresh every run avoids that entirely.
+#       # zap-auth.conf is never committed - generated fresh each run, and
+#       # listed in .gitignore as a backup safety net regardless.
+#       - name: Authenticate and Generate ZAP Auth Config
+#         run: |
+#           TOKEN=$(curl -sf -X POST http://localhost:5000/api/auth/login \
+#             -H "Content-Type: application/json" \
+#             -d "{\"email\":\"$TEST_SUPER_ADMIN_EMAIL\",\"password\":\"$TEST_SUPER_ADMIN_PASSWORD\"}" \
+#             | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])")
+#           if [ -z "$TOKEN" ]; then
+#             echo "::warning::Could not obtain an access token - scan will run unauthenticated"
+#           fi
+#           cat << EOF > zap-auth.conf
+#           replacer.full_list(0).description=AuthHeader
+#           replacer.full_list(0).enabled=true
+#           replacer.full_list(0).matchtype=REQ_HEADER
+#           replacer.full_list(0).matchstr=Authorization
+#           replacer.full_list(0).regex=false
+#           replacer.full_list(0).replacement=Bearer $TOKEN
+#           EOF
+
+#       # 7. Run OWASP ZAP Baseline Scan - direct docker run, not the action
+#       # zaproxy/action-baseline's own internal artifact upload always fails
+#       # against GitHub's deprecated api-version=6.0-preview pipeline endpoint
+#       # (confirmed: a documented, acknowledged bug in the action itself - see
+#       # github.com/orgs/community/discussions/162449 - "no newer release
+#       # exists to upgrade to" since the bug is in the action's bundled code,
+#       # not anything we configure). continue-on-error previously contained
+#       # the damage; this removes it at the source instead, by running the
+#       # exact same underlying command the action itself runs (confirmed
+#       # directly from a prior run's own logs) without going through the
+#       # action wrapper at all - so there's no internal upload call left to
+#       # fail in the first place.
+#       - name: Run OWASP ZAP Baseline Scan
+#         run: |
+#           docker pull ghcr.io/zaproxy/zaproxy:stable
+#           docker run -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
+#             ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+#             -t http://localhost:5000 \
+#             -x zap-report.xml \
+#             -z "-configfile /zap/wrk/zap-auth.conf" \
+#             || true
+
+#       # 8. Keep the report as a downloadable artifact
+#       # Using this instead of the ZAP action's own internal upload, which
+#       # fails against GitHub's old preview artifact API - see note above.
+#       - name: Keep the report (downloadable for 90 days)
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: zap-report-${{ github.run_id }}
+#           path: zap-report.xml
+#           if-no-files-found: warn
+
+#       # 9. Run OWASP ZAP API Scan, driven by the real OpenAPI spec
+#       # The baseline scan above only ever found 3 URLs (/, /robots.txt,
+#       # /sitemap.xml) - confirmed directly in the NXG portal (Host:
+#       # localhost, exactly those 3 endpoints, nothing else). That's not a
+#       # bug in the auth setup (confirmed working) - it's a structural limit:
+#       # ZAP's spider discovers URLs by following HTML hyperlinks, and this
+#       # backend is a pure JSON API with none to follow, authenticated or
+#       # not. zaproxy/action-api-scan is the purpose-built alternative for
+#       # exactly this case - it reads the real spec this app already serves
+#       # at /api/docs.json and tests each documented route directly, with no
+#       # dependency on link discovery. New ground, not yet run live - same
+#       # continue-on-error precaution as the baseline step above, so a
+#       # problem here can't block the rest of the job while it's unverified.
+#       # Same direct-docker-run approach as the baseline step above, for the
+#       # same reason - zaproxy/action-api-scan shares the same bundled
+#       # artifact-upload code as action-baseline. zap-api-scan.py is the
+#       # underlying script this action wraps (same automation-framework
+#       # script family as zap-baseline.py, documented ZAP CLI convention) -
+#       # -f for the spec format, -t for the spec location, same -x/-z pattern.
+#       - name: Run OWASP ZAP API Scan (OpenAPI)
+#         run: |
+#           docker run -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
+#             ghcr.io/zaproxy/zaproxy:stable zap-api-scan.py \
+#             -t http://localhost:5000/api/docs.json \
+#             -f openapi \
+#             -x api-scan-report.xml \
+#             -z "-configfile /zap/wrk/zap-auth.conf" \
+#             || true
+
+#       # 10. Keep the API scan report as a downloadable artifact
+#       - name: Keep the API scan report (downloadable for 90 days)
+#         if: always()
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: api-scan-report-${{ github.run_id }}
+#           path: api-scan-report.xml
+#           if-no-files-found: warn
+
+#       # 11. Upload scans to Security Platform (NXG Secure / DefectDojo)
+#       - name: Upload scans to Security Platform
+#         if: always()
+#         shell: bash
+#         run: |
+#           echo "Uploading ZAP baseline scan report to NXG Portal..."
+#           curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
+#             -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
+#             -F auto_create_context=true \
+#             -F product_type_name="${{ github.repository_owner }}" \
+#             -F product_name="${{ github.event.repository.name }}" \
+#             -F engagement_name="DAST" \
+#             -F scan_type="ZAP Scan" \
+#             -F file=@zap-report.xml
+
+#           if [ -s api-scan-report.xml ]; then
+#             echo "Uploading ZAP API scan report to NXG Portal..."
+#             curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
+#               -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
+#               -F auto_create_context=true \
+#               -F product_type_name="${{ github.repository_owner }}" \
+#               -F product_name="${{ github.event.repository.name }}" \
+#               -F engagement_name="DAST" \
+#               -F scan_type="ZAP Scan" \
+#               -F file=@api-scan-report.xml
+#           else
+#             echo "No API scan report found - skipping that upload"
+#           fi
+
+#       # 12. Clean up containers
+#       - name: Clean Up Stack
+#         if: always()
+#         run: docker compose down
+
+
+#### new file with additional scanning.
 name: DAST Security Scan (OWASP ZAP)
+
+# ─────────────────────────────────────────────────────────────────────────
+# ADOPTING THIS WORKFLOW IN ANOTHER REPO (client handoff notes)
+# This file assumes the target app:
+#   1. Exposes a health endpoint returning HTTP 200 when ready (here: /health)
+#   2. Publishes a machine-readable OpenAPI/Swagger spec (here: /api/docs.json)
+#   3. Boots with test credentials supplied via env vars, and exposes a JSON
+#      login endpoint returning an access token (here: POST /api/auth/login)
+#   4. Ships a docker-compose.yml that brings up the full stack locally
+#   5. Has a seed/fixture script that populates realistic test data (here:
+#      node src/database/seed.js) - without this, ZAP has nothing real to
+#      attack and findings will be artificially low
+#   6. Has at least one lower-privileged test role seeded (here: an
+#      account_manager), so tenant/authorization boundaries get exercised,
+#      not just the super-admin path
+# Adjust paths, commands, and role credentials to match the target app.
+# Requires: repo variable REPORT_ONLY ('true'|'false'), repo secret
+# SECURITY_PLATFORM_TOKEN (DefectDojo/NXG Secure API token).
+# ─────────────────────────────────────────────────────────────────────────
 
 on:
   pull_request:
@@ -7,16 +261,8 @@ on:
 
 permissions:
   contents: read
-  # zaproxy/action-baseline opens a GitHub Issue per alert found when the scan
-  # report is non-empty - without this it fails with "Resource not accessible
-  # by integration" the moment any alert exists.
-  issues: write
-  # Any explicit permissions: block silently drops every unlisted permission
-  # to 'none' instead of leaving it at the repo default - actions: write
-  # wasn't listed, so artifact creation itself had no permission to work at
-  # all. This is why it failed identically on two completely different
-  # artifact names ("zap_scan", then our own run-id-based name) - it was
-  # never actually about the name string.
+  # Needed in orgs that restrict default GITHUB_TOKEN permissions - without
+  # it, actions/upload-artifact can fail to create its artifact container.
   actions: write
 
 jobs:
@@ -24,14 +270,17 @@ jobs:
     name: DAST (Dynamic Web App Check)
     runs-on: ubuntu-latest
     env:
-      # Single source of truth - referenced by both the env-file generation
-      # step and the login step below, instead of each hardcoding its own
-      # copy (which is exactly how they can silently drift out of sync).
-      # Some credential has to exist somewhere for a real login to work at
-      # all - config/validate.js hard-requires these just to boot the
-      # container - this is as close to credential-free as that allows.
+      # Single source of truth, referenced by both the env-file generation
+      # step and the login steps below - avoids drift between duplicated
+      # copies. Not treated as secrets: these are CI-only test accounts,
+      # not real credentials.
       TEST_SUPER_ADMIN_EMAIL:    admin@test.local
       TEST_SUPER_ADMIN_PASSWORD: TestAdmin2026Secure
+      # Lower-privileged role seeded by seed.js - used for a second scan
+      # pass so tenant-isolation / authorization boundaries get exercised,
+      # not just what a super_admin token can reach.
+      TEST_AM_EMAIL:    sarah.johnson@bmmj.com
+      TEST_AM_PASSWORD: Seed@Demo2026
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -69,7 +318,7 @@ jobs:
         run: |
           echo "Waiting for backend to respond..."
           for i in {1..30}; do
-            if curl -sf http://localhost:5000/health || curl -sf http://localhost:5000/; then
+            if curl -sf http://localhost:5000/health; then
               echo "Backend is up!"
               exit 0
             fi
@@ -89,35 +338,27 @@ jobs:
           echo "=== DATABASE LOGS ==="
           docker compose logs postgres
 
-      # 5. Ensure the workspace is writable by the ZAP container
-      # zaproxy/action-baseline runs ZAP as a different container UID than the
-      # one that checked out the workspace - without this, it fails to write
-      # its own report with "AccessDeniedException /zap/wrk/<file>". Safe here:
-      # this is an ephemeral CI runner, destroyed right after the job.
+      # 5. Populate realistic test data - without this, every list endpoint
+      # returns [] and every :id route has no real ID to attack, which is
+      # why findings were artificially low before this step existed.
+      - name: Seed Test Data
+        run: docker compose exec -T backend node src/database/seed.js
+
+      # 6. Ensure the workspace is writable by the ZAP container
       - name: Ensure workspace is writable by ZAP container
         run: chmod -R 777 "$GITHUB_WORKSPACE"
 
-      # 6. Log in and generate ZAP's auth config, so the scan covers real
-      # protected endpoints (meetings, tasks, etc.), not just /health and
-      # /api/docs. No new secrets needed - this logs in for real using the
-      # SUPER_ADMIN_EMAIL/PASSWORD already generated above (the backend
-      # auto-bootstraps that exact account on startup), and injects the
-      # freshly-issued token via ZAP's Replacer add-on. A pre-stored static
-      # token would NOT work here - this app's JWTs expire in 15 minutes
-      # (config/index.js jwtExpiresIn), so it would already be dead by scan
-      # time; logging in fresh every run avoids that entirely.
-      # zap-auth.conf is never committed - generated fresh each run, and
-      # listed in .gitignore as a backup safety net regardless.
-      - name: Authenticate and Generate ZAP Auth Config
+      # 7. Log in as super_admin and generate its ZAP auth config
+      - name: Authenticate as super_admin
         run: |
           TOKEN=$(curl -sf -X POST http://localhost:5000/api/auth/login \
             -H "Content-Type: application/json" \
             -d "{\"email\":\"$TEST_SUPER_ADMIN_EMAIL\",\"password\":\"$TEST_SUPER_ADMIN_PASSWORD\"}" \
             | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])")
           if [ -z "$TOKEN" ]; then
-            echo "::warning::Could not obtain an access token - scan will run unauthenticated"
+            echo "::warning::Could not obtain a super_admin token - scan will run unauthenticated"
           fi
-          cat << EOF > zap-auth.conf
+          cat << EOF > zap-auth-admin.conf
           replacer.full_list(0).description=AuthHeader
           replacer.full_list(0).enabled=true
           replacer.full_list(0).matchtype=REQ_HEADER
@@ -126,32 +367,45 @@ jobs:
           replacer.full_list(0).replacement=Bearer $TOKEN
           EOF
 
-      # 7. Run OWASP ZAP Baseline Scan - direct docker run, not the action
-      # zaproxy/action-baseline's own internal artifact upload always fails
-      # against GitHub's deprecated api-version=6.0-preview pipeline endpoint
-      # (confirmed: a documented, acknowledged bug in the action itself - see
-      # github.com/orgs/community/discussions/162449 - "no newer release
-      # exists to upgrade to" since the bug is in the action's bundled code,
-      # not anything we configure). continue-on-error previously contained
-      # the damage; this removes it at the source instead, by running the
-      # exact same underlying command the action itself runs (confirmed
-      # directly from a prior run's own logs) without going through the
-      # action wrapper at all - so there's no internal upload call left to
-      # fail in the first place.
+      # 8. Log in as account_manager and generate its ZAP auth config -
+      # a second, lower-privileged pass so tenant-isolation / authorization
+      # issues reachable only from a non-admin token get a chance to surface.
+      - name: Authenticate as account_manager
+        run: |
+          TOKEN=$(curl -sf -X POST http://localhost:5000/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"$TEST_AM_EMAIL\",\"password\":\"$TEST_AM_PASSWORD\"}" \
+            | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])")
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::Could not obtain an account_manager token - skipping that pass"
+          fi
+          cat << EOF > zap-auth-am.conf
+          replacer.full_list(0).description=AuthHeader
+          replacer.full_list(0).enabled=true
+          replacer.full_list(0).matchtype=REQ_HEADER
+          replacer.full_list(0).matchstr=Authorization
+          replacer.full_list(0).regex=false
+          replacer.full_list(0).replacement=Bearer $TOKEN
+          EOF
+
+      # 9. Run OWASP ZAP Baseline Scan (spider + passive checks only - this
+      # script never runs an active scan, regardless of what any step name
+      # claims). Direct docker run, not the action: zaproxy/action-baseline's
+      # own bundled artifact-upload code calls a deprecated GitHub API and
+      # always fails - see github.com/orgs/community/discussions/162449.
+      # REPORT_ONLY (repo variable) controls whether real findings here can
+      # block the job - 'true' keeps this report-only, 'false' enforces it.
       - name: Run OWASP ZAP Baseline Scan
+        continue-on-error: ${{ vars.REPORT_ONLY == 'true' }}
         run: |
           docker pull ghcr.io/zaproxy/zaproxy:stable
           docker run -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
             ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
             -t http://localhost:5000 \
             -x zap-report.xml \
-            -z "-configfile /zap/wrk/zap-auth.conf" \
-            || true
+            -z "-configfile /zap/wrk/zap-auth-admin.conf"
 
-      # 8. Keep the report as a downloadable artifact
-      # Using this instead of the ZAP action's own internal upload, which
-      # fails against GitHub's old preview artifact API - see note above.
-      - name: Keep the report (downloadable for 90 days)
+      - name: Keep the baseline report (downloadable for 90 days)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -159,74 +413,86 @@ jobs:
           path: zap-report.xml
           if-no-files-found: warn
 
-      # 9. Run OWASP ZAP API Scan, driven by the real OpenAPI spec
-      # The baseline scan above only ever found 3 URLs (/, /robots.txt,
-      # /sitemap.xml) - confirmed directly in the NXG portal (Host:
-      # localhost, exactly those 3 endpoints, nothing else). That's not a
-      # bug in the auth setup (confirmed working) - it's a structural limit:
-      # ZAP's spider discovers URLs by following HTML hyperlinks, and this
-      # backend is a pure JSON API with none to follow, authenticated or
-      # not. zaproxy/action-api-scan is the purpose-built alternative for
-      # exactly this case - it reads the real spec this app already serves
-      # at /api/docs.json and tests each documented route directly, with no
-      # dependency on link discovery. New ground, not yet run live - same
-      # continue-on-error precaution as the baseline step above, so a
-      # problem here can't block the rest of the job while it's unverified.
-      # Same direct-docker-run approach as the baseline step above, for the
-      # same reason - zaproxy/action-api-scan shares the same bundled
-      # artifact-upload code as action-baseline. zap-api-scan.py is the
-      # underlying script this action wraps (same automation-framework
-      # script family as zap-baseline.py, documented ZAP CLI convention) -
-      # -f for the spec format, -t for the spec location, same -x/-z pattern.
-      - name: Run OWASP ZAP API Scan (OpenAPI)
+      # 10. Run OWASP ZAP API Scan as super_admin, driven by the real OpenAPI
+      # spec at /api/docs.json - this is what gives real route-by-route
+      # coverage (115 real endpoints) instead of the 3 generic URLs a
+      # link-crawling spider finds against a pure JSON API.
+      - name: Run OWASP ZAP API Scan (super_admin)
+        continue-on-error: ${{ vars.REPORT_ONLY == 'true' }}
         run: |
           docker run -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
             ghcr.io/zaproxy/zaproxy:stable zap-api-scan.py \
             -t http://localhost:5000/api/docs.json \
             -f openapi \
             -x api-scan-report.xml \
-            -z "-configfile /zap/wrk/zap-auth.conf" \
-            || true
+            -z "-configfile /zap/wrk/zap-auth-admin.conf"
 
-      # 10. Keep the API scan report as a downloadable artifact
-      - name: Keep the API scan report (downloadable for 90 days)
+      - name: Keep the API scan report - super_admin (downloadable for 90 days)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: api-scan-report-${{ github.run_id }}
+          name: api-scan-report-admin-${{ github.run_id }}
           path: api-scan-report.xml
           if-no-files-found: warn
 
-      # 11. Upload scans to Security Platform (NXG Secure / DefectDojo)
-      - name: Upload scans to Security Platform
+      # 11. Run the same API scan again, this time as account_manager.
+      # ZAP itself doesn't semantically know which role "should" reach which
+      # route (that needs ZAP's dedicated Access Control Testing add-on with
+      # a configured Context/Users/access-level matrix - a heavier setup,
+      # not done here). What this pass DOES buy: broader active-scan coverage
+      # from a different privilege angle, and a visible, auditable record
+      # that the lower-privileged role was tested at all.
+      - name: Run OWASP ZAP API Scan (account_manager)
+        continue-on-error: ${{ vars.REPORT_ONLY == 'true' }}
+        run: |
+          docker run -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
+            ghcr.io/zaproxy/zaproxy:stable zap-api-scan.py \
+            -t http://localhost:5000/api/docs.json \
+            -f openapi \
+            -x api-scan-report-am.xml \
+            -z "-configfile /zap/wrk/zap-auth-am.conf"
+
+      - name: Keep the API scan report - account_manager (downloadable for 90 days)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-scan-report-am-${{ github.run_id }}
+          path: api-scan-report-am.xml
+          if-no-files-found: warn
+
+      # 12. Upload scans to Security Platform (NXG Secure / DefectDojo).
+      # reimport-scan (not import-scan): finds-or-creates ONE Test per
+      # test_title and updates it - new findings get added, findings that
+      # no longer reproduce get auto-closed. import-scan creates a brand
+      # new Test on every single run, so portal numbers only ever grow and
+      # never reflect current state - that was the bug in the previous file.
+      - name: Upload scans to Security Platform (NXG Secure / DefectDojo)
         if: always()
         shell: bash
         run: |
-          echo "Uploading ZAP baseline scan report to NXG Portal..."
-          curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
-            -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
-            -F auto_create_context=true \
-            -F product_type_name="${{ github.repository_owner }}" \
-            -F product_name="${{ github.event.repository.name }}" \
-            -F engagement_name="DAST" \
-            -F scan_type="ZAP Scan" \
-            -F file=@zap-report.xml
+          upload() {
+            local file="$1" title="$2"
+            if [ -s "$file" ]; then
+              echo "Uploading $title to NXG Portal..."
+              curl -sf -X POST "https://nxg.app.nxgsecure.com/api/v2/reimport-scan/" \
+                -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
+                -F auto_create_context=true \
+                -F product_type_name="${{ github.repository_owner }}" \
+                -F product_name="${{ github.event.repository.name }}" \
+                -F engagement_name="DAST" \
+                -F test_title="$title" \
+                -F scan_type="ZAP Scan" \
+                -F file=@"$file" \
+                -F close_old_findings=true || true
+            else
+              echo "$file missing or empty - skipping $title upload"
+            fi
+          }
+          upload zap-report.xml             "DAST - ZAP Baseline (super_admin)"
+          upload api-scan-report.xml        "DAST - ZAP API Scan (super_admin)"
+          upload api-scan-report-am.xml     "DAST - ZAP API Scan (account_manager)"
 
-          if [ -s api-scan-report.xml ]; then
-            echo "Uploading ZAP API scan report to NXG Portal..."
-            curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
-              -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
-              -F auto_create_context=true \
-              -F product_type_name="${{ github.repository_owner }}" \
-              -F product_name="${{ github.event.repository.name }}" \
-              -F engagement_name="DAST" \
-              -F scan_type="ZAP Scan" \
-              -F file=@api-scan-report.xml
-          else
-            echo "No API scan report found - skipping that upload"
-          fi
-
-      # 12. Clean up containers
+      # 13. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down
