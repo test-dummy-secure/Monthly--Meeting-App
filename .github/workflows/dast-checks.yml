@@ -1,5 +1,30 @@
 name: DAST Security Scan (OWASP ZAP)
 
+# ─────────────────────────────────────────────────────────────────────────
+# ADOPTING THIS WORKFLOW IN ANOTHER REPO (client handoff notes)
+# This file assumes the target app:
+#   1. Exposes a health endpoint returning HTTP 200 when ready (here: /health)
+#   2. Publishes a machine-readable OpenAPI/Swagger spec (here: /api/docs.json)
+#      - the API scan step can ONLY test what is actually listed there, so an
+#        incomplete spec means incomplete scan coverage, silently.
+#   3. Boots with test credentials supplied via env vars, and exposes a JSON
+#      login endpoint returning an access token (here: POST /api/auth/login)
+#   4. Ships a docker-compose.yml that brings up the full stack locally
+# The "Create Environment Files" step below inherits the target app's own
+# .env.example / .env.production.example when one exists (so real
+# integration/DB/SMTP config isn't clobbered), and only force-generates the
+# handful of fields that have strict format validation at boot - a bare
+# "does this key name already exist" check isn't enough for those, since
+# example files conventionally ship them as human-fill-in placeholders
+# ("replace_with_64_char_hex_key") that would otherwise be accepted as real
+# and crash the app at startup.
+# The "Seed Test Data" step auto-detects SEED_SCRIPT_PATH inside the running
+# container and skips cleanly if it isn't there, or if DAST_SKIP_SEED is set -
+# not every organization ships or wants seed data used for this scan.
+# Requires: repo variable REPORT_ONLY ('true'|'false'), repo secret
+# SECURITY_PLATFORM_TOKEN (DefectDojo/NXG Secure API token).
+# ─────────────────────────────────────────────────────────────────────────
+
 on:
   pull_request:
     branches: [ main ]
@@ -17,40 +42,78 @@ jobs:
     env:
       TEST_SUPER_ADMIN_EMAIL:    admin@test.local
       TEST_SUPER_ADMIN_PASSWORD: TestAdmin2026Secure
+      SEED_SCRIPT_PATH: src/database/seed.js
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Adapt to Client's Environment or Fallback to BMMJ Working Config
+      # 1. Create environment files - start from the target app's own example
       - name: Create Environment Files
         run: |
           if [ -f ".env.production.example" ]; then
-            echo "Found .env.production.example - copying..."
+            echo "Found .env.production.example - using it as the base."
             cp .env.production.example .env.production
           elif [ -f ".env.example" ]; then
-            echo "Found .env.example - copying..."
+            echo "Found .env.example - using it as the base."
             cp .env.example .env.production
           else
             touch .env.production
           fi
 
-          # Ensure essential variables exist without breaking custom ones
-          grep -q "VITE_API_URL" .env.production || echo "VITE_API_URL=https://api.test.local" >> .env.production
-          grep -q "DB_NAME" .env.production || echo "DB_NAME=BMMJ" >> .env.production
-          grep -q "DB_USER" .env.production || echo "DB_USER=bmmj_user" >> .env.production
-          grep -q "DB_PASSWORD" .env.production || echo "DB_PASSWORD=testpassword" >> .env.production
-          grep -q "REDIS_PASSWORD" .env.production || echo "REDIS_PASSWORD=testpassword" >> .env.production
-          grep -q "JWT_ACCESS_SECRET" .env.production || echo "JWT_ACCESS_SECRET=test-super-secret-access-token-key-12345" >> .env.production
-          grep -q "JWT_REFRESH_SECRET" .env.production || echo "JWT_REFRESH_SECRET=test-super-secret-refresh-token-key-12345" >> .env.production
-          grep -q "NXG360_ENCRYPTION_KEY" .env.production || echo "NXG360_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env.production
-          grep -q "TOKEN_ENCRYPTION_KEY" .env.production || echo "TOKEN_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env.production
-          grep -q "CLIENT_URL" .env.production || echo "CLIENT_URL=https://app.test.local" >> .env.production
-          grep -q "SMTP_USER" .env.production || echo "SMTP_USER=test@test.local" >> .env.production
-          grep -q "SMTP_PASS" .env.production || echo "SMTP_PASS=testsmtppass" >> .env.production
-          grep -q "SMTP_FROM" .env.production || echo "SMTP_FROM=NxgSecure Test <test@test.local>" >> .env.production
-          grep -q "MS_CLIENT_ID" .env.production || echo "MS_CLIENT_ID=00000000-0000-0000-0000-000000000000" >> .env.production
-          grep -q "SUPER_ADMIN_EMAIL" .env.production || echo "SUPER_ADMIN_EMAIL=$TEST_SUPER_ADMIN_EMAIL" >> .env.production
-          grep -q "SUPER_ADMIN_PASSWORD" .env.production || echo "SUPER_ADMIN_PASSWORD=$TEST_SUPER_ADMIN_PASSWORD" >> .env.production
+          # Fields with no strict format validation at boot - safe to keep
+          # whatever the client's own example file already set; only fill in
+          # if genuinely absent.
+          grep -q "^VITE_API_URL="    .env.production || echo "VITE_API_URL=https://api.test.local"           >> .env.production
+          grep -q "^DB_NAME="         .env.production || echo "DB_NAME=BMMJ"                                   >> .env.production
+          grep -q "^DB_USER="         .env.production || echo "DB_USER=bmmj_user"                              >> .env.production
+          grep -q "^DB_PASSWORD="     .env.production || echo "DB_PASSWORD=testpassword"                      >> .env.production
+          grep -q "^REDIS_PASSWORD="  .env.production || echo "REDIS_PASSWORD=testpassword"                   >> .env.production
+          grep -q "^CLIENT_URL="      .env.production || echo "CLIENT_URL=https://app.test.local"             >> .env.production
+          grep -q "^SMTP_USER="       .env.production || echo "SMTP_USER=test@test.local"                     >> .env.production
+          grep -q "^SMTP_PASS="       .env.production || echo "SMTP_PASS=testsmtppass"                        >> .env.production
+          grep -q "^SMTP_FROM="       .env.production || echo "SMTP_FROM=NxgSecure Test <test@test.local>"    >> .env.production
+          grep -q "^MS_CLIENT_ID="    .env.production || echo "MS_CLIENT_ID=00000000-0000-0000-0000-000000000000" >> .env.production
+
+          # Fields config/validate.js hard-fails the boot on if their VALUE is
+          # wrong shape - not just missing. An example file almost always
+          # ships these as human-fill-in placeholders ("replace_with_64_char_
+          # hex_key"), which a bare "does the key name exist" check would
+          # wrongly accept as real, crash-looping the backend at boot. Read
+          # the current value back out and validate its actual shape before
+          # deciding to keep it.
+          get_env_value() { sed -n "s/^$1=//p" .env.production | tail -n1; }
+
+          force_hex64() {
+            local key="$1" current
+            current=$(get_env_value "$key")
+            if ! [[ "$current" =~ ^[0-9a-fA-F]{64}$ ]]; then
+              sed -i "/^${key}=/d" .env.production
+              echo "${key}=$(openssl rand -hex 32)" >> .env.production
+            fi
+          }
+          force_hex64 NXG360_ENCRYPTION_KEY
+          force_hex64 TOKEN_ENCRYPTION_KEY
+
+          force_long_secret() {
+            local key="$1" current
+            current=$(get_env_value "$key")
+            if [ "${#current}" -lt 32 ]; then
+              sed -i "/^${key}=/d" .env.production
+              echo "${key}=$(openssl rand -hex 32)" >> .env.production
+            fi
+          }
+          force_long_secret JWT_ACCESS_SECRET
+          force_long_secret JWT_REFRESH_SECRET
+
+          # SUPER_ADMIN_EMAIL/PASSWORD are forced unconditionally, never
+          # inherited - the login step later in this job authenticates with
+          # exactly $TEST_SUPER_ADMIN_EMAIL/$TEST_SUPER_ADMIN_PASSWORD, so
+          # whatever actually gets bootstrapped must match those, regardless
+          # of any placeholder a client's example file happens to contain.
+          sed -i "/^SUPER_ADMIN_EMAIL=/d"    .env.production
+          sed -i "/^SUPER_ADMIN_PASSWORD=/d" .env.production
+          echo "SUPER_ADMIN_EMAIL=$TEST_SUPER_ADMIN_EMAIL"       >> .env.production
+          echo "SUPER_ADMIN_PASSWORD=$TEST_SUPER_ADMIN_PASSWORD" >> .env.production
 
           cp .env.production .env
 
@@ -83,17 +146,34 @@ jobs:
           echo "=== DATABASE LOGS ==="
           docker compose logs postgres
 
-      # 5. Ensure the workspace is writable by the ZAP container
+      # 5. Populate realistic test data, if the target app has a seed script -
+      # without this every list endpoint returns [] and every :id route has
+      # no real ID to attack, so findings end up artificially low (header/
+      # config issues only).
+      - name: Seed Test Data (optional)
+        run: |
+          if [ "${{ vars.DAST_SKIP_SEED }}" = "true" ]; then
+            echo "DAST_SKIP_SEED is set - skipping test data seed."
+          elif docker compose exec -T backend test -f "$SEED_SCRIPT_PATH"; then
+            echo "Found $SEED_SCRIPT_PATH - populating test data..."
+            docker compose exec -T backend node "$SEED_SCRIPT_PATH"
+          else
+            echo "No seed script at $SEED_SCRIPT_PATH - skipping. Scan will run against an empty database; findings may be limited to what's reachable without real IDs."
+          fi
+
+      # 6. Ensure the workspace is writable by the ZAP container
       - name: Ensure workspace is writable by ZAP container
         run: chmod -R 777 "$GITHUB_WORKSPACE"
 
-      # 6. Authenticate and Generate ZAP Auth Config
+      # 7. Log in and generate ZAP's auth config, so the scan covers real
+      # protected endpoints (meetings, tasks, etc.), not just /health and
+      # /api/docs. 
       - name: Authenticate and Generate ZAP Auth Config
         run: |
           TOKEN=$(curl -sf -X POST http://localhost:5000/api/auth/login \
             -H "Content-Type: application/json" \
             -d "{\"email\":\"$TEST_SUPER_ADMIN_EMAIL\",\"password\":\"$TEST_SUPER_ADMIN_PASSWORD\"}" \
-            | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])")
+            | python3 -c "import sys, json; print(json.load(sys.stdin).get('accessToken',''))")
           if [ -z "$TOKEN" ]; then
             echo "::warning::Could not obtain an access token - scan will run unauthenticated"
           fi
@@ -106,18 +186,18 @@ jobs:
           replacer.full_list(0).replacement=Bearer $TOKEN
           EOF
 
-      # 7. Run OWASP ZAP Baseline Scan
+      # 8. Run OWASP ZAP Baseline Scan - direct docker run, not the action.
       - name: Run OWASP ZAP Baseline Scan
+        continue-on-error: ${{ vars.REPORT_ONLY == 'true' }}
         run: |
           docker pull ghcr.io/zaproxy/zaproxy:stable
-          docker run -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
+          docker run --rm -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
             ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
             -t http://localhost:5000 \
             -x zap-report.xml \
-            -z "-configfile /zap/wrk/zap-auth.conf" \
-            || true
+            -z "-configfile /zap/wrk/zap-auth.conf"
 
-      # 8. Keep the report as a downloadable artifact
+      # 9. Keep the report as a downloadable artifact
       - name: Keep the report (downloadable for 90 days)
         if: always()
         uses: actions/upload-artifact@v4
@@ -126,18 +206,18 @@ jobs:
           path: zap-report.xml
           if-no-files-found: warn
 
-      # 9. Run OWASP ZAP API Scan (OpenAPI)
+      # 10. Run OWASP ZAP API Scan, driven by the real OpenAPI spec.
       - name: Run OWASP ZAP API Scan (OpenAPI)
+        continue-on-error: ${{ vars.REPORT_ONLY == 'true' }}
         run: |
-          docker run -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
+          docker run --rm -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
             ghcr.io/zaproxy/zaproxy:stable zap-api-scan.py \
             -t http://localhost:5000/api/docs.json \
             -f openapi \
             -x api-scan-report.xml \
-            -z "-configfile /zap/wrk/zap-auth.conf" \
-            || true
+            -z "-configfile /zap/wrk/zap-auth.conf"
 
-      # 10. Keep the API scan report as a downloadable artifact
+      # 11. Keep the API scan report as a downloadable artifact
       - name: Keep the API scan report (downloadable for 90 days)
         if: always()
         uses: actions/upload-artifact@v4
@@ -146,36 +226,44 @@ jobs:
           path: api-scan-report.xml
           if-no-files-found: warn
 
-      # 11. Upload scans to Security Platform (NXG Secure / DefectDojo)
-      - name: Upload scans to Security Platform
+      # 12. Upload scans to Security Platform (NXG Secure / DefectDojo).
+      - name: Upload scans to Security Platform (NXG Secure / DefectDojo)
         if: always()
         shell: bash
         run: |
-          echo "Uploading ZAP baseline scan report to NXG Portal..."
-          curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
-            -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
-            -F auto_create_context=true \
-            -F product_type_name="${{ github.repository_owner }}" \
-            -F product_name="${{ github.event.repository.name }}" \
-            -F engagement_name="DAST" \
-            -F scan_type="ZAP Scan" \
-            -F file=@zap-report.xml
-
-          if [ -s api-scan-report.xml ]; then
-            echo "Uploading ZAP API scan report to NXG Portal..."
-            curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
+          if [ -s zap-report.xml ]; then
+            echo "Uploading ZAP baseline scan report to NXG Portal..."
+            curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/reimport-scan/" \
               -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
               -F auto_create_context=true \
               -F product_type_name="${{ github.repository_owner }}" \
               -F product_name="${{ github.event.repository.name }}" \
               -F engagement_name="DAST" \
+              -F test_title="DAST - ZAP Baseline" \
               -F scan_type="ZAP Scan" \
-              -F file=@api-scan-report.xml
+              -F file=@zap-report.xml \
+              -F close_old_findings=true || true
           else
-            echo "No API scan report found - skipping that upload"
+            echo "zap-report.xml is missing or empty, skipping upload."
           fi
 
-      # 12. Clean up containers
+          if [ -s api-scan-report.xml ]; then
+            echo "Uploading ZAP API scan report to NXG Portal..."
+            curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/reimport-scan/" \
+              -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
+              -F auto_create_context=true \
+              -F product_type_name="${{ github.repository_owner }}" \
+              -F product_name="${{ github.event.repository.name }}" \
+              -F engagement_name="DAST" \
+              -F test_title="DAST - ZAP API Scan" \
+              -F scan_type="ZAP Scan" \
+              -F file=@api-scan-report.xml \
+              -F close_old_findings=true || true
+          else
+            echo "api-scan-report.xml is missing or empty, skipping upload."
+          fi
+
+      # 13. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down
