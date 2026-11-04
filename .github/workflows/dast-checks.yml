@@ -21,6 +21,12 @@ name: DAST Security Scan (OWASP ZAP)
 # The "Seed Test Data" step auto-detects SEED_SCRIPT_PATH inside the running
 # container and skips cleanly if it isn't there, or if DAST_SKIP_SEED is set -
 # not every organization ships or wants seed data used for this scan.
+# STRICT_HEX64_VARS / STRICT_MIN32_VARS / ADMIN_EMAIL_VAR / ADMIN_PASSWORD_VAR
+# / APP_PORT / HEALTH_PATH / OPENAPI_SPEC_PATH / LOGIN_PATH /
+# LOGIN_EMAIL_FIELD / LOGIN_PASSWORD_FIELD / LOGIN_TOKEN_FIELD /
+# BACKEND_SERVICE / DB_SERVICE (below, in the job env) are the ONLY
+# app-specific values in this file - edit them for a different target app
+# rather than hunting through the script logic for hardcoded strings.
 # Requires: repo variable REPORT_ONLY ('true'|'false'), repo secret
 # SECURITY_PLATFORM_TOKEN (DefectDojo/NXG Secure API token).
 # ─────────────────────────────────────────────────────────────────────────
@@ -43,6 +49,35 @@ jobs:
       TEST_SUPER_ADMIN_EMAIL:    admin@test.local
       TEST_SUPER_ADMIN_PASSWORD: TestAdmin2026Secure
       SEED_SCRIPT_PATH: src/database/seed.js
+      # ── Customize this block for a different target app; blank out any
+      # line that doesn't apply. Nothing here is app-agnostic logic - these
+      # are just the NAMES this app happens to use, moved out of the script
+      # below so a different app's names go here instead of being hunted
+      # down inside bash functions. ───────────────────────────────────────
+      # Comma-separated ENV VAR NAMES your app's own startup validator
+      # requires to be a 64-character hex string (e.g. AES-256 keys).
+      STRICT_HEX64_VARS: "NXG360_ENCRYPTION_KEY,TOKEN_ENCRYPTION_KEY"
+      # Comma-separated ENV VAR NAMES your app's own startup validator
+      # requires to be at least 32 characters long (e.g. JWT signing secrets).
+      STRICT_MIN32_VARS: "JWT_ACCESS_SECRET,JWT_REFRESH_SECRET"
+      # The ENV VAR NAMES your app bootstraps its one admin/test login
+      # account from - the login step below authenticates with the values
+      # of TEST_SUPER_ADMIN_EMAIL/PASSWORD above, written out under
+      # whatever names you set here.
+      ADMIN_EMAIL_VAR:    SUPER_ADMIN_EMAIL
+      ADMIN_PASSWORD_VAR: SUPER_ADMIN_PASSWORD
+      # ── Target app's shape - edit for a different app ───────────────────
+      APP_PORT:          5000
+      HEALTH_PATH:       /health
+      OPENAPI_SPEC_PATH: /api/docs.json
+      LOGIN_PATH:        /api/auth/login
+      LOGIN_EMAIL_FIELD:    email
+      LOGIN_PASSWORD_FIELD: password
+      LOGIN_TOKEN_FIELD:    accessToken
+      # docker-compose.yml service names for the app container and its DB -
+      # used by the health/debug/seed steps below.
+      BACKEND_SERVICE: backend
+      DB_SERVICE:      postgres
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -91,8 +126,10 @@ jobs:
               echo "${key}=$(openssl rand -hex 32)" >> .env.production
             fi
           }
-          force_hex64 NXG360_ENCRYPTION_KEY
-          force_hex64 TOKEN_ENCRYPTION_KEY
+          IFS=',' read -ra _hex64_keys <<< "$STRICT_HEX64_VARS"
+          for key in "${_hex64_keys[@]}"; do
+            [ -n "$key" ] && force_hex64 "$key"
+          done
 
           force_long_secret() {
             local key="$1" current
@@ -102,18 +139,24 @@ jobs:
               echo "${key}=$(openssl rand -hex 32)" >> .env.production
             fi
           }
-          force_long_secret JWT_ACCESS_SECRET
-          force_long_secret JWT_REFRESH_SECRET
+          IFS=',' read -ra _min32_keys <<< "$STRICT_MIN32_VARS"
+          for key in "${_min32_keys[@]}"; do
+            [ -n "$key" ] && force_long_secret "$key"
+          done
 
-          # SUPER_ADMIN_EMAIL/PASSWORD are forced unconditionally, never
-          # inherited - the login step later in this job authenticates with
-          # exactly $TEST_SUPER_ADMIN_EMAIL/$TEST_SUPER_ADMIN_PASSWORD, so
-          # whatever actually gets bootstrapped must match those, regardless
-          # of any placeholder a client's example file happens to contain.
-          sed -i "/^SUPER_ADMIN_EMAIL=/d"    .env.production
-          sed -i "/^SUPER_ADMIN_PASSWORD=/d" .env.production
-          echo "SUPER_ADMIN_EMAIL=$TEST_SUPER_ADMIN_EMAIL"       >> .env.production
-          echo "SUPER_ADMIN_PASSWORD=$TEST_SUPER_ADMIN_PASSWORD" >> .env.production
+          # The admin/test login credentials are forced unconditionally,
+          # never inherited - the login step later in this job authenticates
+          # with exactly $TEST_SUPER_ADMIN_EMAIL/$TEST_SUPER_ADMIN_PASSWORD,
+          # so whatever actually gets bootstrapped must match those,
+          # regardless of any placeholder a client's example file contains.
+          if [ -n "$ADMIN_EMAIL_VAR" ]; then
+            sed -i "/^${ADMIN_EMAIL_VAR}=/d" .env.production
+            echo "${ADMIN_EMAIL_VAR}=$TEST_SUPER_ADMIN_EMAIL" >> .env.production
+          fi
+          if [ -n "$ADMIN_PASSWORD_VAR" ]; then
+            sed -i "/^${ADMIN_PASSWORD_VAR}=/d" .env.production
+            echo "${ADMIN_PASSWORD_VAR}=$TEST_SUPER_ADMIN_PASSWORD" >> .env.production
+          fi
 
           cp .env.production .env
 
@@ -126,7 +169,7 @@ jobs:
         run: |
           echo "Waiting for backend to respond..."
           for i in {1..30}; do
-            if curl -sf http://localhost:5000/health || curl -sf http://localhost:5000/; then
+            if curl -sf "http://localhost:$APP_PORT$HEALTH_PATH" || curl -sf "http://localhost:$APP_PORT/"; then
               echo "Backend is up!"
               exit 0
             fi
@@ -142,9 +185,9 @@ jobs:
           echo "=== DOCKER COMPOSE STATUS ==="
           docker compose ps
           echo "=== BACKEND LOGS ==="
-          docker compose logs backend
+          docker compose logs "$BACKEND_SERVICE"
           echo "=== DATABASE LOGS ==="
-          docker compose logs postgres
+          docker compose logs "$DB_SERVICE"
 
       # 5. Populate realistic test data, if the target app has a seed script -
       # without this every list endpoint returns [] and every :id route has
@@ -154,9 +197,9 @@ jobs:
         run: |
           if [ "${{ vars.DAST_SKIP_SEED }}" = "true" ]; then
             echo "DAST_SKIP_SEED is set - skipping test data seed."
-          elif docker compose exec -T backend test -f "$SEED_SCRIPT_PATH"; then
+          elif docker compose exec -T "$BACKEND_SERVICE" test -f "$SEED_SCRIPT_PATH"; then
             echo "Found $SEED_SCRIPT_PATH - populating test data..."
-            docker compose exec -T backend node "$SEED_SCRIPT_PATH"
+            docker compose exec -T "$BACKEND_SERVICE" node "$SEED_SCRIPT_PATH"
           else
             echo "No seed script at $SEED_SCRIPT_PATH - skipping. Scan will run against an empty database; findings may be limited to what's reachable without real IDs."
           fi
@@ -170,10 +213,10 @@ jobs:
       # /api/docs. 
       - name: Authenticate and Generate ZAP Auth Config
         run: |
-          TOKEN=$(curl -sf -X POST http://localhost:5000/api/auth/login \
+          TOKEN=$(curl -sf -X POST "http://localhost:$APP_PORT$LOGIN_PATH" \
             -H "Content-Type: application/json" \
-            -d "{\"email\":\"$TEST_SUPER_ADMIN_EMAIL\",\"password\":\"$TEST_SUPER_ADMIN_PASSWORD\"}" \
-            | python3 -c "import sys, json; print(json.load(sys.stdin).get('accessToken',''))")
+            -d "{\"$LOGIN_EMAIL_FIELD\":\"$TEST_SUPER_ADMIN_EMAIL\",\"$LOGIN_PASSWORD_FIELD\":\"$TEST_SUPER_ADMIN_PASSWORD\"}" \
+            | python3 -c "import sys, json; print(json.load(sys.stdin).get('$LOGIN_TOKEN_FIELD',''))")
           if [ -z "$TOKEN" ]; then
             echo "::warning::Could not obtain an access token - scan will run unauthenticated"
           fi
@@ -193,7 +236,7 @@ jobs:
           docker pull ghcr.io/zaproxy/zaproxy:stable
           docker run --rm -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
             ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
-            -t http://localhost:5000 \
+            -t "http://localhost:$APP_PORT" \
             -x zap-report.xml \
             -z "-configfile /zap/wrk/zap-auth.conf"
 
@@ -212,7 +255,7 @@ jobs:
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
             ghcr.io/zaproxy/zaproxy:stable zap-api-scan.py \
-            -t http://localhost:5000/api/docs.json \
+            -t "http://localhost:$APP_PORT$OPENAPI_SPEC_PATH" \
             -f openapi \
             -x api-scan-report.xml \
             -z "-configfile /zap/wrk/zap-auth.conf"
