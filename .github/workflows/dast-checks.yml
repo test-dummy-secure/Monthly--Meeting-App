@@ -4,14 +4,10 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
-    inputs:
-      target_url:
-        description: 'Target Application URL'
-        required: true
-        default: 'http://localhost:5000'
 
 permissions:
   contents: read
+  issues: write
   actions: write
 
 jobs:
@@ -19,122 +15,130 @@ jobs:
     name: DAST (Dynamic Web App Check)
     runs-on: ubuntu-latest
     env:
-      LOGIN_ENDPOINT: ${{ vars.DAST_LOGIN_ENDPOINT || '/api/auth/login' }}
-      TEST_EMAIL: ${{ vars.DAST_TEST_EMAIL || 'admin@test.local' }}
-      TEST_PASSWORD: ${{ secrets.DAST_TEST_PASSWORD || 'DefaultSecurePassword123' }}
-      OPENAPI_SPEC_PATH: ${{ vars.DAST_OPENAPI_PATH || '/api/docs.json' }}
+      TEST_SUPER_ADMIN_EMAIL:    admin@test.local
+      TEST_SUPER_ADMIN_PASSWORD: TestAdmin2026Secure
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Adapt to Client's Environment Files
-      - name: Setup Client Environment Variables
+      # 1. Adapt to Client's Environment or Fallback to BMMJ Working Config
+      - name: Create Environment Files
         run: |
           if [ -f ".env.production.example" ]; then
-            echo "Found .env.production.example - copying to .env.production..."
+            echo "Found .env.production.example - copying..."
             cp .env.production.example .env.production
           elif [ -f ".env.example" ]; then
-            echo "Found .env.example - copying to .env.production..."
+            echo "Found .env.example - copying..."
             cp .env.example .env.production
-          elif [ -f ".env.sample" ]; then
-            echo "Found .env.sample - copying to .env.production..."
-            cp .env.sample .env.production
           else
-            echo "No example env files found, generating a standard base .env.production..."
             touch .env.production
           fi
 
-          if [ ! -f ".env" ]; then
-            cp .env.production .env
-          fi
-
-          # Append mandatory variables
-          echo "" >> .env.production
-          echo "# Added automatically by NXGSecure DAST Pipeline" >> .env.production
-          grep -q "VITE_API_URL" .env.production || echo "VITE_API_URL=http://localhost:5000" >> .env.production
-          grep -q "SUPER_ADMIN_EMAIL" .env.production || echo "SUPER_ADMIN_EMAIL=$TEST_EMAIL" >> .env.production
-          grep -q "SUPER_ADMIN_PASSWORD" .env.production || echo "SUPER_ADMIN_PASSWORD=$TEST_PASSWORD" >> .env.production
+          # Ensure essential variables exist without breaking custom ones
+          grep -q "VITE_API_URL" .env.production || echo "VITE_API_URL=https://api.test.local" >> .env.production
+          grep -q "DB_NAME" .env.production || echo "DB_NAME=BMMJ" >> .env.production
+          grep -q "DB_USER" .env.production || echo "DB_USER=bmmj_user" >> .env.production
+          grep -q "DB_PASSWORD" .env.production || echo "DB_PASSWORD=testpassword" >> .env.production
+          grep -q "REDIS_PASSWORD" .env.production || echo "REDIS_PASSWORD=testpassword" >> .env.production
           grep -q "JWT_ACCESS_SECRET" .env.production || echo "JWT_ACCESS_SECRET=test-super-secret-access-token-key-12345" >> .env.production
+          grep -q "JWT_REFRESH_SECRET" .env.production || echo "JWT_REFRESH_SECRET=test-super-secret-refresh-token-key-12345" >> .env.production
+          grep -q "NXG360_ENCRYPTION_KEY" .env.production || echo "NXG360_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env.production
+          grep -q "TOKEN_ENCRYPTION_KEY" .env.production || echo "TOKEN_ENCRYPTION_KEY=$(openssl rand -hex 32)" >> .env.production
+          grep -q "CLIENT_URL" .env.production || echo "CLIENT_URL=https://app.test.local" >> .env.production
+          grep -q "SMTP_USER" .env.production || echo "SMTP_USER=test@test.local" >> .env.production
+          grep -q "SMTP_PASS" .env.production || echo "SMTP_PASS=testsmtppass" >> .env.production
+          grep -q "SMTP_FROM" .env.production || echo "SMTP_FROM=NxgSecure Test <test@test.local>" >> .env.production
+          grep -q "MS_CLIENT_ID" .env.production || echo "MS_CLIENT_ID=00000000-0000-0000-0000-000000000000" >> .env.production
+          grep -q "SUPER_ADMIN_EMAIL" .env.production || echo "SUPER_ADMIN_EMAIL=$TEST_SUPER_ADMIN_EMAIL" >> .env.production
+          grep -q "SUPER_ADMIN_PASSWORD" .env.production || echo "SUPER_ADMIN_PASSWORD=$TEST_SUPER_ADMIN_PASSWORD" >> .env.production
 
           cp .env.production .env
-          echo "Environment and production variables successfully initialized."
 
-      # 2. Start Application Stack via Docker Compose (Passing build args to satisfy Vite)
+      # 2. Start Application Stack via Docker Compose
       - name: Start Application Stack via Docker Compose
-        run: VITE_API_URL=http://localhost:5000 docker compose up -d --build
+        run: docker compose up -d
 
-      # 3. Flexible Health Check
+      # 3. Wait for the backend health check to pass
       - name: Wait for Backend Health Check
         run: |
-          echo "Waiting for application to respond..."
+          echo "Waiting for backend to respond..."
           for i in {1..30}; do
             if curl -sf http://localhost:5000/health || curl -sf http://localhost:5000/; then
-              echo "Application is up!"
+              echo "Backend is up!"
               exit 0
             fi
             sleep 3
           done
-          echo "Application failed to start in time"
+          echo "Backend failed to start in time"
           exit 1
 
-      # 4. Optional Test Data Seeding
-      - name: Seed Test Data (Optional)
+      # 4. Debug Logs if Health Check Fails
+      - name: Debug Container Logs on Failure
+        if: failure()
         run: |
-          if [ -f "src/database/seed.js" ]; then
-            echo "Running default seed script..."
-            docker compose exec -T backend node src/database/seed.js
-          elif [ -f "package.json" ] && grep -q "seed" package.json; then
-            echo "Running npm seed script..."
-            docker compose exec -T backend npm run seed
-          else
-            echo "No standard seed script detected, skipping..."
-          fi
+          echo "=== DOCKER COMPOSE STATUS ==="
+          docker compose ps
+          echo "=== BACKEND LOGS ==="
+          docker compose logs backend
+          echo "=== DATABASE LOGS ==="
+          docker compose logs postgres
 
+      # 5. Ensure the workspace is writable by the ZAP container
       - name: Ensure workspace is writable by ZAP container
         run: chmod -R 777 "$GITHUB_WORKSPACE"
 
-      # 5. Dynamic Authentication Generation
-      - name: Generate Dynamic ZAP Auth Config
-        if: ${{ env.LOGIN_ENDPOINT != '' }}
+      # 6. Authenticate and Generate ZAP Auth Config
+      - name: Authenticate and Generate ZAP Auth Config
         run: |
-          echo "Attempting to authenticate against $LOGIN_ENDPOINT..."
-          TOKEN=$(curl -sf -X POST http://localhost:5000${{ env.LOGIN_ENDPOINT }} \
+          TOKEN=$(curl -sf -X POST http://localhost:5000/api/auth/login \
             -H "Content-Type: application/json" \
-            -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASSWORD\"}" \
-            | python3 -c "import sys, json; res = json.load(sys.stdin); print(res.get('accessToken') or res.get('token') or '')")
-          
+            -d "{\"email\":\"$TEST_SUPER_ADMIN_EMAIL\",\"password\":\"$TEST_SUPER_ADMIN_PASSWORD\"}" \
+            | python3 -c "import sys, json; print(json.load(sys.stdin)['accessToken'])")
           if [ -z "$TOKEN" ]; then
             echo "::warning::Could not obtain an access token - scan will run unauthenticated"
-          else
-            echo "Successfully obtained authentication token for DAST scan."
-            cat << EOF > zap-auth.conf
-            replacer.full_list(0).description=AuthHeader
-            replacer.full_list(0).enabled=true
-            replacer.full_list(0).matchtype=REQ_HEADER
-            replacer.full_list(0).matchstr=Authorization
-            replacer.full_list(0).regex=false
-            replacer.full_list(0).replacement=Bearer $TOKEN
-            EOF
           fi
+          cat << EOF > zap-auth.conf
+          replacer.full_list(0).description=AuthHeader
+          replacer.full_list(0).enabled=true
+          replacer.full_list(0).matchtype=REQ_HEADER
+          replacer.full_list(0).matchstr=Authorization
+          replacer.full_list(0).regex=false
+          replacer.full_list(0).replacement=Bearer $TOKEN
+          EOF
 
-      # 6. Run ZAP API Scan dynamically
-      - name: Run OWASP ZAP API Scan
+      # 7. Run OWASP ZAP Baseline Scan
+      - name: Run OWASP ZAP Baseline Scan
         run: |
-          SPEC_URL="http://localhost:5000${{ env.OPENAPI_SPEC_PATH }}"
-          AUTH_FLAG=""
-          if [ -f "zap-auth.conf" ]; then
-            AUTH_FLAG="-z \"-configfile /zap/wrk/zap-auth.conf\""
-          }
-
           docker pull ghcr.io/zaproxy/zaproxy:stable
           docker run -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
+            ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+            -t http://localhost:5000 \
+            -x zap-report.xml \
+            -z "-configfile /zap/wrk/zap-auth.conf" \
+            || true
+
+      # 8. Keep the report as a downloadable artifact
+      - name: Keep the report (downloadable for 90 days)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report-${{ github.run_id }}
+          path: zap-report.xml
+          if-no-files-found: warn
+
+      # 9. Run OWASP ZAP API Scan (OpenAPI)
+      - name: Run OWASP ZAP API Scan (OpenAPI)
+        run: |
+          docker run -v "$GITHUB_WORKSPACE:/zap/wrk/:rw" --network=host -t \
             ghcr.io/zaproxy/zaproxy:stable zap-api-scan.py \
-            -t "$SPEC_URL" \
+            -t http://localhost:5000/api/docs.json \
             -f openapi \
             -x api-scan-report.xml \
-            $AUTH_FLAG || true
+            -z "-configfile /zap/wrk/zap-auth.conf" \
+            || true
 
-      - name: Keep the report (downloadable for 90 days)
+      # 10. Keep the API scan report as a downloadable artifact
+      - name: Keep the API scan report (downloadable for 90 days)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -142,24 +146,36 @@ jobs:
           path: api-scan-report.xml
           if-no-files-found: warn
 
-      # 7. Upload to DefectDojo using reimport-scan
-      - name: Upload to NXG Secure / DefectDojo
+      # 11. Upload scans to Security Platform (NXG Secure / DefectDojo)
+      - name: Upload scans to Security Platform
         if: always()
         shell: bash
         run: |
+          echo "Uploading ZAP baseline scan report to NXG Portal..."
+          curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
+            -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
+            -F auto_create_context=true \
+            -F product_type_name="${{ github.repository_owner }}" \
+            -F product_name="${{ github.event.repository.name }}" \
+            -F engagement_name="DAST" \
+            -F scan_type="ZAP Scan" \
+            -F file=@zap-report.xml
+
           if [ -s api-scan-report.xml ]; then
-            curl -sf -X POST "https://nxg.app.nxgsecure.com/api/v2/reimport-scan/" \
+            echo "Uploading ZAP API scan report to NXG Portal..."
+            curl -v -X POST "https://nxg.app.nxgsecure.com/api/v2/import-scan/" \
               -H "Authorization: Token ${{ secrets.SECURITY_PLATFORM_TOKEN }}" \
               -F auto_create_context=true \
               -F product_type_name="${{ github.repository_owner }}" \
               -F product_name="${{ github.event.repository.name }}" \
               -F engagement_name="DAST" \
-              -F test_title="DAST - ZAP API Scan" \
               -F scan_type="ZAP Scan" \
-              -F file=@api-scan-report.xml \
-              -F close_old_findings=true || true
+              -F file=@api-scan-report.xml
+          else
+            echo "No API scan report found - skipping that upload"
           fi
 
+      # 12. Clean up containers
       - name: Clean Up Stack
         if: always()
         run: docker compose down
