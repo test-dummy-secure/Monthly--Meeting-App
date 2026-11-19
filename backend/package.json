@@ -28,6 +28,7 @@
     "pdf-parse": "^2.4.5",
     "pdfkit": "^0.19.1",
     "pg": "^8.21.0",
+    "proxy-addr": "^2.0.8",
     "redis": "^5.0.0",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
